@@ -565,14 +565,16 @@ function setupDownload() {
   });
 }
 /* ==========================================================================
-   배경음악: 자동 재생이 막히면 첫 클릭·키 입력 때 시작, 머리말 버튼으로 끄고 켬
+   배경음악: 들어오자마자 켬. 브라우저가 소리 자동 재생을 막으면
+   첫 클릭·터치·키 입력 때 바로 시작하고, 머리말 버튼으로 끄고 켬
    ========================================================================== */
 function setupMusic() {
   const audio = $("#bgm"), btn = $("#snd");
   if (!audio || !btn) return;
   const VOL = 0.45;
-  let wanted = true; // 방문자가 끄기 전까지는 켜 둠
-  let fade = 0;
+  const GESTURES = ["pointerdown", "pointerup", "mousedown", "click", "keydown", "touchend", "wheel"];
+  let wanted = true; // 기본은 켜짐. 방문자가 버튼으로 끄면 그때부터 꺼 둠
+  let fade = 0, trying = false;
   // 켤 때만 1.6초 동안 서서히 키움 (끌 때는 바로 멈춤)
   const fadeIn = () => {
     clearInterval(fade);
@@ -583,14 +585,25 @@ function setupMusic() {
       if (k >= 1) clearInterval(fade);
     }, 40);
   };
+  const onGesture = (e) => {
+    if (e.target.closest && e.target.closest("#snd")) return;
+    if (wanted) play();
+  };
+  const unlisten = () => GESTURES.forEach((ev) => window.removeEventListener(ev, onGesture, { capture: true }));
+  // 막히면 버튼이 깜박이며 기다리고, 다음 입력 때 다시 시도
   const play = () => {
-    if (!audio.paused) return;
+    if (!audio.paused || trying) return;
+    trying = true;
     audio.volume = 0;
-    audio.play().then(fadeIn).catch(() => {});
+    audio.play()
+      .then(() => { unlisten(); fadeIn(); })
+      .catch(() => btn.classList.add("is-waiting"))
+      .finally(() => { trying = false; });
   };
   const pause = () => { clearInterval(fade); audio.pause(); };
   const render = () => {
     const on = !audio.paused;
+    if (on) btn.classList.remove("is-waiting");
     btn.classList.toggle("is-on", on);
     btn.setAttribute("aria-pressed", String(on));
     btn.setAttribute("aria-label", on ? "배경음악 끄기" : "배경음악 켜기");
@@ -600,18 +613,14 @@ function setupMusic() {
   audio.addEventListener("pause", render);
   btn.addEventListener("click", () => {
     wanted = audio.paused;
-    if (wanted) play(); else pause();
-  });
-  const firstGesture = (e) => {
-    if (e.target.closest && e.target.closest("#snd")) return;
-    ["pointerdown", "keydown", "touchend"].forEach((ev) => window.removeEventListener(ev, firstGesture, true));
     if (wanted) play();
-  };
-  ["pointerdown", "keydown", "touchend"].forEach((ev) => window.addEventListener(ev, firstGesture, true));
+    else { btn.classList.remove("is-waiting"); pause(); }
+  });
+  GESTURES.forEach((ev) => window.addEventListener(ev, onGesture, { capture: true, passive: true }));
   // 다른 탭으로 가면 멈췄다가 돌아오면 다시
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) pause();
-    else if (wanted && audio.currentTime > 0) play();
+    else if (wanted) play();
   });
   play();
 }

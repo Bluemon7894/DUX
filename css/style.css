@@ -133,6 +133,8 @@ a { color: inherit; }
 .snd.is-on .snd__bars i:nth-child(3) { animation-delay: -0.6s; }
 .snd.is-on .snd__bars i:nth-child(4) { animation-delay: -0.15s; }
 @keyframes snd-eq { from { height: 3px; } to { height: 12px; } }
+.snd.is-waiting { border-color: var(--gold-hi); animation: snd-call 1.6s ease-in-out infinite; }
+@keyframes snd-call { 50% { box-shadow: 0 0 0 5px rgba(230, 181, 74, 0.28); } }
 @media (max-width: 520px) { .snd { padding: 0 11px; } .snd__txt { display: none; } }
 
 .rail { position: fixed; right: 22px; top: 22vh; height: 56vh; width: 2px; z-index: 20; background: var(--rule); }
@@ -409,7 +411,7 @@ html:not(.js) .track, html:not(.js) .hand { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   html.js { scroll-behavior: auto; }
-  .cue i::after, .wave b, .voice__msg::after, .push, .snd.is-on .snd__bars i, .veil__streaks, .metro__train svg { animation: none; }
+  .cue i::after, .wave b, .voice__msg::after, .push, .snd.is-on .snd__bars i, .snd.is-waiting, .veil__streaks, .metro__train svg { animation: none; }
   .snd.is-on .snd__bars i { height: 8px; }
   .hand, .ps { transition: none; }
 }
