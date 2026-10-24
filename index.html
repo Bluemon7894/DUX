@@ -38,7 +38,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
-  <link rel="stylesheet" href="css/style.css?v=20261024m" />
+  <link rel="stylesheet" href="css/style.css?v=20261024o" />
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -123,7 +123,7 @@
           <p class="lk__time" data-clock="now">--:--</p>
           <div class="noti">
             <img class="appic" src="assets/icons/dux-icon-64.png" alt="" />
-            <div><p class="noti__app">DUX<span>지금</span></p><p class="noti__msg">출발 전에 오늘 원하는 이동 방식을 말해 주세요. 그대로 길을 찾아 드릴게요.</p></div>
+            <div><p class="noti__app">DUX<span>지금</span></p><p class="noti__msg">출발 전에 오늘 원하는 이동 방식을 말해 주세요. 그대로 길을 찾아 줄게요.</p></div>
           </div>
         </div>
 
@@ -192,7 +192,7 @@
 
         <!-- 400번 버스 타고 가는 중 -->
         <div class="ps" data-ps="ride">
-          <div class="turn turn--ride"><span class="turn__ic"><svg><use href="#ic-bus"/></svg></span><div><p class="turn__dist" id="ride-left">2정거장 뒤 내려요</p><p class="turn__txt" id="ride-txt">400번 · 내릴 때가 되면 알려 드려요</p></div></div>
+          <div class="turn turn--ride"><span class="turn__ic"><svg><use href="#ic-bus"/></svg></span><div><p class="turn__dist" id="ride-left">2정거장 뒤 내려요</p><p class="turn__txt" id="ride-txt">400번 · 내릴 때가 되면 알려 줘요</p></div></div>
           <div class="navfoot"><div><p class="navfoot__eta"><b data-t="39">--:--</b> 도착 예정</p><p class="navfoot__sub">내린 뒤 도서관까지 걸어서 8분 · 계단 없는 길</p></div><span class="xbtn">종료</span></div>
         </div>
 
@@ -228,7 +228,9 @@
   <main id="main" class="story">
     <section class="ch ch--intro" id="s-intro" data-a="0" data-b="0.08" aria-labelledby="t-intro">
       <p class="eyebrow">맞춤형 AI 안내앱 · DUX</p>
-      <h1 id="t-intro" class="title"><span>오늘의 나에게</span><span>맞는 길.</span></h1>      <p class="lead">오늘 어떻게 가고 싶은지 말만 하면, 그 조건에 맞는 길을 찾아 줘요.<br />가는 도중에 상황이 바뀌어도 같은 조건으로 다시 안내해요.</p>
+      <h1 id="t-intro" class="title"><span>오늘의 나에게</span><span>맞는 길.</span></h1>
+      <p class="slogan">말한 조건 그대로, 도착할 때까지.</p>
+      <p class="lead">오늘 어떻게 가고 싶은지 말만 하면, 그 조건에 맞는 길을 찾아 줘요.<br />가는 도중에 상황이 바뀌어도 같은 조건으로 다시 안내해요.</p>
       <p class="cue"><i></i>스크롤하거나 스페이스바를 눌러 한 단계씩 따라가 보세요</p>
     </section>
 
@@ -243,15 +245,15 @@
     <section class="ch ch--match" id="s-match" data-a="0.22" data-b="0.33" aria-labelledby="t-match">
       <div class="copy">
         <p class="kick"><span class="n">기능 2</span>조건 맞춤 경로 탐색</p>
-        <h2 id="t-match" class="h2">내 조건에 맞는<br />길만 골라 드려요.</h2>
-        <p class="body">걷는 속도에 맞춰 시간을 다시 계산하고, 계단이 있는 환승 경로는 처음부터 빼요. 그래서 27분짜리 최단 경로 대신 계단 없는 31분 경로를 추천하고, 왜 이 길인지도 함께 알려 드려요.</p>
+        <h2 id="t-match" class="h2">내 조건에 맞는<br />길만 골라 줘요.</h2>
+        <p class="body">걷는 속도에 맞춰 시간을 다시 계산하고, 계단이 있는 환승 경로는 처음부터 빼요. 그래서 27분짜리 최단 경로 대신 계단 없는 31분 경로를 추천하고, 왜 이 길인지도 함께 알려 줘요.</p>
       </div>
     </section>
 
     <section class="ch ch--ride" id="s-ride" data-a="0.33" data-b="0.5" aria-labelledby="t-ride">
       <div class="copy">
         <p class="kick"><span class="n">기능 3</span>도보·버스·지하철 통합 안내</p>
-        <h2 id="t-ride" class="h2">걷는 동안에는<br />다음에 할 일을 알려 드려요.</h2>
+        <h2 id="t-ride" class="h2">걷는 동안에는<br />다음에 할 일을 알려 줘요.</h2>
         <p class="body">어디서 꺾을지, 어느 횡단보도를 건널지, 정류장까지 몇 m 남았는지 걸음에 맞춰 보여 줘요. 가는 길에 계단이 없는지도 계속 확인해요.</p>
         <ol class="legs" aria-label="추천 경로 구간">
           <li style="--k:0"><span>도보</span>4분</li>
@@ -265,7 +267,7 @@
     <section class="ch ch--delay" id="s-delay" data-a="0.5" data-b="0.6" aria-labelledby="t-delay">
       <div class="slash">
         <p class="kick"><span class="n">기능 4</span>실시간 지연 감지</p>
-        <h2 id="t-delay" class="h2">타려던 버스나 지하철이 늦어지면<br />먼저 알려 드려요.</h2>
+        <h2 id="t-delay" class="h2">타려던 버스나 지하철이 늦어지면<br />먼저 알려 줘요.</h2>
         <p class="body">이동하는 동안 내 경로에 있는 버스·지하철 도착 정보를 계속 확인해요. 지금처럼 402번 버스가 9분 늦어져 환승이 어려워지면, 바로 알림을 보내고 다른 길을 찾기 시작해요.</p>
       </div>
     </section>
@@ -285,7 +287,7 @@
     <section class="ch ch--trust" id="s-trust" data-a="0.81" data-b="0.905" aria-labelledby="t-trust">
       <div class="copy">
         <p class="kick"><span class="n">기능 6</span>예측 신뢰도 표시</p>
-        <h2 id="t-trust" class="h2">확실하지 않을 때는<br />그렇다고 함께 보여 드려요.</h2>
+        <h2 id="t-trust" class="h2">확실하지 않을 때는<br />그렇다고 함께 보여 줘요.</h2>
         <p class="body">도착 시간은 AI가 짐작하지 않고 지도·교통 데이터로 계산해요. 버스 위치 정보가 늦게 들어오거나 부족하면 ‘예측 신뢰도 보통’처럼 화면에 같이 표시해요.</p>
       </div>
     </section>
@@ -328,6 +330,6 @@
   <!-- 배경음악: 브라우저가 자동 재생을 막으면 첫 클릭·키 입력 때 시작 -->
   <audio id="bgm" src="assets/audio/main.mp3" loop preload="auto"></audio>
 
-  <script type="module" src="js/main.js?v=20261024k"></script>
+  <script type="module" src="js/main.js?v=20261024l"></script>
 </body>
 </html>

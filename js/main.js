@@ -409,7 +409,7 @@ function updatePhone(p) {
     const f = smooth(BUS.go, BUS.stop, p);
     const [a, b] = p > BUS.stop - 0.004 ? ["이번 정류장에서 내려요", "가운데 문 쪽에 계단이 없어요"]
       : f > 0.55 ? ["다음 정류장에서 내려요", "400번 · 도서관 입구 하차"]
-      : ["2정거장 뒤 내려요", "400번 · 내릴 때가 되면 알려 드려요"];
+      : ["2정거장 뒤 내려요", "400번 · 내릴 때가 되면 알려 줘요"];
     if (rideLeft.textContent !== a) { rideLeft.textContent = a; rideTxt.textContent = b; }
   }
   if (s === "trust") nav3.textContent = String(Math.max(0, Math.round(paths.w3.length - cam.d3)));
