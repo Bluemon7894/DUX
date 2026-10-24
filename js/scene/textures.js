@@ -152,61 +152,220 @@ export function villaPlateTexture(fontFamily) {
   return { texture: t, count: VILLA_NAMES.length, cell };
 }
 
-/* ---------- 1층 상가 (4×2 변형) ---------- */
-export const SHOP_VARIANTS = 8; // 0~3 셔터, 4 편의점, 5 카페, 6 약국, 7 셔터 반쯤
-export function shopTextures(seed) {
-  const W = 256, H = 256;
-  const r = rng(seed);
-  const [cd, d] = canvas(W * 4, H * 2);
-  const [ce, e] = canvas(W * 4, H * 2);
-  e.fillStyle = "#000"; e.fillRect(0, 0, W * 4, H * 2);
-  for (let i = 0; i < SHOP_VARIANTS; i++) {
-    const x = (i % 4) * W, y = Math.floor(i / 4) * H;
-    d.fillStyle = "#4a4640"; d.fillRect(x, y, W, H);
-    d.fillStyle = "#2b2824"; d.fillRect(x, y, W, 26); // 상단 인방
-    if (i <= 3 || i === 7) {
-      // 셔터 (가로 골)
-      const top = i === 7 ? 120 : 30;
-      const base = 120 + Math.floor(r() * 50);
-      for (let k = top; k < H - 6; k += 6) {
-        d.fillStyle = `rgb(${base},${base},${base + 4})`; d.fillRect(x + 10, y + k, W - 20, 4);
-        d.fillStyle = `rgb(${base - 40},${base - 40},${base - 36})`; d.fillRect(x + 10, y + k + 4, W - 20, 2);
-      }
-      if (i === 7) { // 반쯤 열린 셔터 아래 빛
-        d.fillStyle = "#1a1a1a"; d.fillRect(x + 10, y + 30, W - 20, 90);
-        e.fillStyle = "rgba(255,226,170,0.9)"; e.fillRect(x + 10, y + H - 40, W - 20, 34);
-      }
-      d.fillStyle = "rgba(0,0,0,0.25)"; d.fillRect(x + 10, y + H - 6, W - 20, 6);
-    } else {
-      // 유리 진열창
-      d.fillStyle = "#1d2328"; d.fillRect(x + 10, y + 30, W - 20, H - 36);
-      d.fillStyle = "#6b6f70";
-      d.fillRect(x + W / 2 - 3, y + 30, 6, H - 36);
-      const glow = i === 4 ? "#f4f8ff" : i === 5 ? "#ffcf8a" : "#e9fff4";
-      e.fillStyle = glow; e.fillRect(x + 10, y + 30, W - 20, H - 36);
-      // 진열대·실루엣
-      e.fillStyle = "rgba(0,0,0,0.35)";
-      for (let k = 0; k < 4; k++) e.fillRect(x + 20 + k * 58, y + 80, 40, H - 90);
-      e.fillStyle = i === 4 ? "rgba(40,120,220,0.9)" : i === 6 ? "rgba(30,160,90,0.9)" : "rgba(120,70,30,0.8)";
-      e.fillRect(x + 10, y + 30, W - 20, 10);
-    }
+/* ---------- 1층 가게 (밤 9시) ----------
+ * 진열창 너머로 보이는 가게 안을 원근감 있게 그림. 문 연 가게는 같은 그림을 발광 맵에도 그려 안이 환하게 보이고,
+ * 닫은 가게는 셔터. 유리창 틀·문·셔터 상자 같은 입체 부품은 city-build.js 에서 따로 붙임.
+ */
+export const SHOP_LOOKS = ["conv", "warm", "butcher", "cafe", "mart", "phone", "cool", "study", "shutter", "shutter2", "half", "lobby"];
+const LOOK = {
+  conv: { wall: "#eef2f4", side: "#dde3e7", ceil: "#f7f9fa", floor: "#c9cfd3", light: "#ffffff" },
+  warm: { wall: "#e8c99a", side: "#d7b07c", ceil: "#efdcbc", floor: "#8a6a4a", light: "#fff1cf" },
+  butcher: { wall: "#f1e6e4", side: "#e5d3d0", ceil: "#f3e9e7", floor: "#b9aaa6", light: "#ff8f8f" },
+  cafe: { wall: "#7a5a40", side: "#6a4c35", ceil: "#4a372a", floor: "#5a4232", light: "#ffd08a" },
+  mart: { wall: "#f1f3ec", side: "#e2e6dc", ceil: "#fafbf7", floor: "#cfd3c9", light: "#ffffff" },
+  phone: { wall: "#fbfbfc", side: "#eceef1", ceil: "#ffffff", floor: "#d9dce0", light: "#ffffff" },
+  cool: { wall: "#e7eeec", side: "#d6dfdc", ceil: "#f2f6f5", floor: "#b9c2bf", light: "#f4fffb" },
+  study: { wall: "#e9edf1", side: "#dbe1e7", ceil: "#f5f7f9", floor: "#9aa3ab", light: "#f2f7ff" },
+  lobby: { wall: "#d9c3a0", side: "#c8ad86", ceil: "#eadbc2", floor: "#7b6248", light: "#ffe2b0" }
+};
+function drawInterior(g, x, y, W, H, look, r) {
+  const L = LOOK[look];
+  const bx0 = x + W * 0.16, bx1 = x + W * 0.84, by0 = y + H * 0.2, by1 = y + H * 0.7; // 뒷벽
+  const poly = (pts, col) => { g.fillStyle = col; g.beginPath(); pts.forEach(([px, py], k) => (k ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath(); g.fill(); };
+  g.fillStyle = L.wall; g.fillRect(x, y, W, H);
+  poly([[x, y], [x + W, y], [bx1, by0], [bx0, by0]], L.ceil);                 // 천장
+  poly([[x, y + H], [x + W, y + H], [bx1, by1], [bx0, by1]], L.floor);         // 바닥
+  poly([[x, y], [bx0, by0], [bx0, by1], [x, y + H]], L.side);                 // 옆벽
+  poly([[x + W, y], [bx1, by0], [bx1, by1], [x + W, y + H]], L.side);
+  // 천장 조명 (원근 따라 줄지어)
+  g.fillStyle = L.light;
+  for (let k = 0; k < 3; k++) {
+    const t = k / 3, ly = y + (by0 - y) * (0.25 + t * 0.6), lw = W * (0.5 - t * 0.28);
+    g.fillRect(x + W / 2 - lw / 2, ly, lw, 3 + (1 - t) * 3);
   }
-  noise(d, W * 4, H * 2, 10, r);
-  const map = tex(cd, false), emissive = tex(ce, false);
-  return { map, emissive };
+  const R = (a, b) => a + (b - a) * r();
+  const people = (n, yy, s) => { // 앉은 사람 실루엣
+    g.fillStyle = "rgba(40,32,28,0.85)";
+    for (let k = 0; k < n; k++) { const px = R(bx0 - 40, bx1 + 40); g.beginPath(); g.arc(px, yy - s * 1.4, s * 0.55, 0, Math.PI * 2); g.fill(); g.fillRect(px - s * 0.7, yy - s * 0.9, s * 1.4, s * 1.2); }
+  };
+  if (look === "conv" || look === "mart") {
+    // 뒷벽 냉장고 + 가운데 진열대 + 계산대
+    g.fillStyle = "#cfe9f2"; g.fillRect(bx0 + 6, by0 + 10, (bx1 - bx0) - 12, by1 - by0 - 14);
+    for (let k = bx0 + 8; k < bx1 - 8; k += 14) { g.fillStyle = `hsl(${R(0, 360)},60%,${R(45, 65)}%)`; for (let j = by0 + 16; j < by1 - 10; j += 12) g.fillRect(k, j, 8, 7); }
+    for (let row = 0; row < 3; row++) {
+      const yy = by1 + 8 + row * 18, x0 = x + W * (0.22 - row * 0.05), x1 = x + W * (0.62 + row * 0.04);
+      g.fillStyle = "#b9c0c4"; g.fillRect(x0, yy - 26, x1 - x0, 30);
+      for (let k = x0 + 4; k < x1 - 6; k += 9) { g.fillStyle = look === "mart" ? `hsl(${[10, 30, 50, 100, 0][Math.floor(r() * 5)]},75%,${R(45, 60)}%)` : `hsl(${R(0, 360)},55%,${R(40, 65)}%)`; g.fillRect(k, yy - 24, 6, 9); g.fillRect(k, yy - 12, 6, 9); }
+    }
+    g.fillStyle = "#8a9196"; g.fillRect(x + W * 0.74, y + H * 0.62, W * 0.2, H * 0.3);   // 계산대
+    if (look === "mart") for (let k = 0; k < 5; k++) { g.fillStyle = "#a8743c"; g.fillRect(x + 20 + k * 92, y + H - 46, 80, 40); for (let j = 0; j < 8; j++) { g.fillStyle = ["#e8572a", "#f2a531", "#7cb342", "#d63a3a"][k % 4]; g.beginPath(); g.arc(x + 30 + k * 92 + j * 9, y + H - 40, 5, 0, Math.PI * 2); g.fill(); } }
+  } else if (look === "warm") {
+    g.fillStyle = "#2b2420"; g.fillRect(bx0 + 30, by0 + 8, bx1 - bx0 - 60, 34);                                      // 메뉴판
+    g.fillStyle = "#ffd36a"; for (let k = 0; k < 5; k++) g.fillRect(bx0 + 40 + k * ((bx1 - bx0 - 80) / 5), by0 + 16, (bx1 - bx0 - 120) / 5, 4);
+    for (let k = 0; k < 4; k++) { const tx = x + 50 + k * 115; g.fillStyle = "#6b4a2e"; g.fillRect(tx, y + H * 0.72, 80, 10); g.fillStyle = "#4a3322"; g.fillRect(tx + 8, y + H * 0.76, 6, 30); g.fillRect(tx + 66, y + H * 0.76, 6, 30); }
+    people(5, y + H * 0.72, 11);
+    g.fillStyle = "#ffe7b0"; for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(x + 70 + k * 120, y + 30, 9, 0, Math.PI * 2); g.fill(); }
+  } else if (look === "butcher") {
+    g.strokeStyle = "rgba(160,140,140,0.5)"; g.lineWidth = 1;                                                         // 흰 타일
+    for (let k = by0; k < by1; k += 10) { g.beginPath(); g.moveTo(bx0, k); g.lineTo(bx1, k); g.stroke(); }
+    g.fillStyle = "#d9d9d9"; g.fillRect(x + W * 0.1, y + H * 0.56, W * 0.8, H * 0.36);                               // 진열 냉장고
+    g.fillStyle = "#ff4b4b"; g.fillRect(x + W * 0.12, y + H * 0.6, W * 0.76, H * 0.22);                              // 붉은 조명 아래 고기
+    g.fillStyle = "#a3161d"; for (let k = 0; k < 9; k++) { g.beginPath(); g.ellipse(x + W * 0.16 + k * W * 0.08, y + H * 0.72, 16, 9, 0.3, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = "#f3f0ef"; for (let k = 0; k < 9; k++) g.fillRect(x + W * 0.15 + k * W * 0.08, y + H * 0.74, 10, 3);
+    g.fillStyle = "#ff3030"; for (let k = 0; k < 4; k++) { g.beginPath(); g.arc(x + 80 + k * 115, y + 34, 10, 0, Math.PI * 2); g.fill(); }
+  } else if (look === "cafe" || look === "lobby") {
+    for (let k = bx0 + 6; k < bx1 - 6; k += 18) { g.fillStyle = look === "lobby" ? `hsl(${R(0, 360)},40%,${R(30, 55)}%)` : "#c9b79a"; g.fillRect(k, by0 + 12, 12, look === "lobby" ? by1 - by0 - 20 : 8); }
+    if (look === "cafe") { g.fillStyle = "#3a2a1f"; g.fillRect(x + W * 0.55, y + H * 0.58, W * 0.36, H * 0.34); g.fillStyle = "#c7cbd0"; g.fillRect(x + W * 0.62, y + H * 0.5, 40, 22); }
+    g.fillStyle = "#3f6b3a"; for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(x + 30 + k * 26, y + H - 40, 16, 0, Math.PI * 2); g.fill(); }
+    for (let k = 0; k < 3; k++) { const tx = x + 60 + k * 110; g.fillStyle = "#5a3d28"; g.fillRect(tx, y + H * 0.74, 70, 8); }
+    people(look === "cafe" ? 4 : 3, y + H * 0.74, 10);
+    g.fillStyle = "#ffcf7a"; for (let k = 0; k < 5; k++) { const lx = x + 50 + k * 100; g.fillRect(lx, y, 2, 30); g.beginPath(); g.arc(lx + 1, y + 34, 9, 0, Math.PI); g.fill(); }
+  } else if (look === "phone") {
+    const grd = g.createLinearGradient(bx0, 0, bx1, 0); grd.addColorStop(0, "#5b2cff"); grd.addColorStop(0.5, "#ff3d7f"); grd.addColorStop(1, "#ffb02e");
+    g.fillStyle = grd; g.fillRect(bx0 + 20, by0 + 10, bx1 - bx0 - 40, by1 - by0 - 20);                                 // 큰 광고 포스터
+    g.fillStyle = "#e3002b"; g.fillRect(bx0, by0 - 6, bx1 - bx0, 8);
+    for (let k = 0; k < 3; k++) { const tx = x + 50 + k * 150; g.fillStyle = "#d9dde2"; g.fillRect(tx, y + H * 0.74, 110, 14); g.fillStyle = "#1c1f24"; for (let j = 0; j < 4; j++) g.fillRect(tx + 8 + j * 26, y + H * 0.74 - 14, 12, 18); }
+  } else if (look === "cool") {
+    g.fillStyle = "#bfe0ea"; for (let k = 0; k < 4; k++) g.fillRect(bx0 + 14 + k * ((bx1 - bx0 - 28) / 4), by0 + 14, (bx1 - bx0) / 4 - 22, by1 - by0 - 40); // 거울·진열장
+    g.fillStyle = "#9aa6a3"; g.fillRect(x + W * 0.2, y + H * 0.66, W * 0.6, H * 0.08);
+    people(2, y + H * 0.72, 11);
+  } else if (look === "study") {
+    for (let row = 0; row < 3; row++) {                                                                                // 칸막이 책상 줄
+      const yy = y + H * (0.5 + row * 0.15), x0 = x + W * (0.12 - row * 0.05), x1 = x + W * (0.88 + row * 0.05);
+      g.fillStyle = "#c3cad1"; g.fillRect(x0, yy, x1 - x0, 8);
+      for (let k = x0; k < x1; k += 46 + row * 8) { g.fillStyle = "#8e979f"; g.fillRect(k, yy - 22 - row * 4, 4, 22 + row * 4); g.fillStyle = "#fffbe6"; g.fillRect(k + 14, yy - 6, 10, 4); }
+    }
+    people(6, y + H * 0.66, 9);
+  }
+}
+function drawShutter(d, e, x, y, W, H, look, r) {
+  d.fillStyle = "#3a3936"; d.fillRect(x, y, W, H);
+  const base = look === "shutter2" ? 96 : 128 + Math.floor(r() * 30);
+  const tint = look === "shutter2" ? [0, 6, 14] : [0, 0, 4];
+  if (look === "half") { // 반쯤 내린 셔터 아래로 가게 안 불빛
+    drawInterior(d, x, y, W, H, "warm", r);
+    drawInterior(e, x, y, W, H, "warm", r);
+    e.fillStyle = "rgba(0,0,0,0.35)"; e.fillRect(x, y, W, H);
+  }
+  for (let k = 0; k < (look === "half" ? H * 0.5 : H); k += 7) {
+    d.fillStyle = `rgb(${base + tint[0]},${base + tint[1]},${base + tint[2]})`; d.fillRect(x, y + k, W, 5);
+    d.fillStyle = `rgb(${base - 45},${base - 45},${base - 40})`; d.fillRect(x, y + k + 5, W, 2);
+    if (look === "half") { e.fillStyle = "#000"; e.fillRect(x, y + k, W, 7); }
+  }
+  if (look !== "half") {
+    d.fillStyle = "rgba(255,255,255,0.08)"; d.fillRect(x + W * 0.1, y + H * 0.35, W * 0.18, H * 0.12);     // 붙여 둔 안내문
+    d.fillStyle = "rgba(0,0,0,0.25)"; d.fillRect(x, y + H - 8, W, 8);
+  }
+}
+export function shopTextures(seed) {
+  const W = 512, H = 256, COLS = 4, ROWS = 3;
+  const r = rng(seed);
+  const [cd, d] = canvas(W * COLS, H * ROWS);
+  const [ce, e] = canvas(W * COLS, H * ROWS);
+  e.fillStyle = "#000"; e.fillRect(0, 0, ce.width, ce.height);
+  SHOP_LOOKS.forEach((look, i) => {
+    const x = (i % COLS) * W, y = Math.floor(i / COLS) * H;
+    if (look.startsWith("shutter") || look === "half") { drawShutter(d, e, x, y, W, H, look, r); return; }
+    const s = r() * 1e9;
+    drawInterior(d, x, y, W, H, look, rng(s));
+    drawInterior(e, x, y, W, H, look, rng(s));   // 문 연 가게: 같은 그림이 스스로 빛남
+    e.fillStyle = "rgba(0,0,0,0.12)"; e.fillRect(x, y, W, H);
+    // 유리 반사 (낮 맵에만)
+    d.fillStyle = "rgba(255,255,255,0.07)";
+    d.beginPath(); d.moveTo(x + W * 0.1, y + H); d.lineTo(x + W * 0.35, y); d.lineTo(x + W * 0.45, y); d.lineTo(x + W * 0.2, y + H); d.closePath(); d.fill();
+  });
+  noise(d, W * COLS, H * ROWS, 8, r);
+  // look 이름 → uv 사각형 [u0, v0, u1, v1]
+  const cell = (look) => {
+    const i = Math.max(0, SHOP_LOOKS.indexOf(look)), c = i % COLS, rw = Math.floor(i / COLS);
+    return [c / COLS + 0.002, 1 - (rw + 1) / ROWS + 0.004, (c + 1) / COLS - 0.002, 1 - rw / ROWS - 0.004];
+  };
+  return { map: tex(cd, false), emissive: tex(ce, false), cell };
+}
+
+/* ---------- 거리 가게 목록 (밤 9시 기준) ----------
+ * sign: 간판 글자(HSIGNS 이름), look: 진열창 속 모습, open: 문 열었을 확률,
+ * out: 가게 앞 소품(tables 플라스틱 탁자 · xbanner 배너), awning: 차양 색
+ */
+export const SHOPS = [
+  { sign: "24시 편의점", look: "conv", open: 1, out: "xbanner", banner: "1+1 행사", w: 3 },
+  { sign: "치킨", look: "warm", open: 1, out: "tables", w: 3 },
+  { sign: "호프", look: "warm", open: 1, out: "tables", w: 2 },
+  { sign: "정육점", look: "butcher", open: 0.95, w: 2 },
+  { sign: "카페", look: "cafe", open: 0.9, awning: "#3b2a20", w: 2 },
+  { sign: "분식", look: "warm", open: 0.8, out: "xbanner", banner: "오늘의 메뉴", w: 2 },
+  { sign: "국밥", look: "warm", open: 0.95, out: "xbanner", banner: "24시 영업", w: 2 },
+  { sign: "순대국", look: "warm", open: 0.85, out: "xbanner", banner: "포장 할인", w: 1 },
+  { sign: "마트", look: "mart", open: 1, out: "xbanner", banner: "배달 가능", w: 2 },
+  { sign: "휴대폰", look: "phone", open: 0.85, out: "xbanner", banner: "개통 이벤트", w: 2 },
+  { sign: "미용실", look: "cool", open: 0.6, out: "xbanner", banner: "커트 9900원", w: 2 },
+  { sign: "빵집", look: "cafe", open: 0.6, awning: "#b8682e", w: 1 },
+  { sign: "꽃집", look: "cool", open: 0.4, awning: "#2f6b3a", w: 1 },
+  { sign: "반찬가게", look: "warm", open: 0.5, awning: "#9c3626", w: 1 },
+  { sign: "약국", look: "cool", open: 0.4, w: 1 },
+  { sign: "안경", look: "cool", open: 0.55, w: 1 },
+  { sign: "세탁소", look: "cool", open: 0.35, w: 1 },
+  { sign: "부동산", look: "cool", open: 0.2, w: 1 },
+  { sign: "떡집", look: "warm", open: 0.15, w: 1 },
+  { sign: "철물점", look: "warm", open: 0.2, w: 1 },
+  { sign: "스터디카페", look: "study", open: 1, w: 1 }
+];
+
+/* ---------- 가게 앞 X배너 (세로 글씨, 8칸 × 128px 폭) ---------- */
+export const BANNERS = [
+  ["1+1 행사", "#ffd400", "#d4161b"], ["개통 이벤트", "#e3002b", "#ffffff"], ["커트 9900원", "#262626", "#ffd400"], ["오늘의 메뉴", "#2f8a4a", "#ffffff"],
+  ["배달 가능", "#1d4fa8", "#ffffff"], ["신규 오픈", "#d4161b", "#ffffff"], ["포장 할인", "#f28c28", "#ffffff"], ["24시 영업", "#111111", "#4fd1ff"]
+];
+export function bannerTexture(fontFamily) {
+  const W = 128, H = 512;
+  const [c, g] = canvas(W * BANNERS.length, H);
+  BANNERS.forEach(([text, bg, fg], i) => {
+    const x = i * W;
+    g.fillStyle = bg; g.fillRect(x, 0, W, H);
+    g.fillStyle = fg; g.fillRect(x, 0, W, 10); g.fillRect(x, H - 10, W, 10);
+    g.font = `900 58px ${fontFamily}`; g.textAlign = "center"; g.textBaseline = "middle";
+    const chars = [...text.replace(/ /g, "")];
+    const step = Math.min(78, 440 / chars.length);
+    chars.forEach((ch, k) => g.fillText(ch, x + W / 2, H / 2 - ((chars.length - 1) * step) / 2 + k * step));
+  });
+  const cell = (i) => [i / BANNERS.length + 0.004, 0.004, (i + 1) / BANNERS.length - 0.004, 0.996];
+  return { texture: tex(c, false), cell, index: (name) => Math.max(0, BANNERS.findIndex((b) => b[0] === name)) };
+}
+
+/* ---------- 2·3층 유리창 글씨 (학원 · 스터디카페 · PC방 …) ---------- */
+export const UPPER = [
+  ["스터디카페 24H", "#ffe14d", 0.95], ["수학 전문 학원", "#ffffff", 0.8], ["영어학원", "#a6e6ff", 0.7], ["PC방", "#4fd1ff", 1],
+  ["필라테스", "#ffb3c8", 0.55], ["치과", "#a8d8ff", 0.1], ["노래연습장", "#ff7ad9", 1], ["당구장", "#8dff9c", 0.9],
+  ["태권도", "#ff6a5f", 0.5], ["피부과", "#ffd1e0", 0.1], ["독서실", "#fff2a8", 0.9], ["보컬 학원", "#d9b3ff", 0.6]
+];
+export function upperLetteringTexture(fontFamily) {
+  const W = 1024, H = 128;
+  const [c, g] = canvas(W, H * UPPER.length);
+  g.clearRect(0, 0, c.width, c.height);
+  UPPER.forEach(([text, col], i) => {
+    const y = i * H;
+    g.font = `900 92px ${fontFamily}`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.lineWidth = 10; g.strokeStyle = "rgba(0,0,0,0.55)"; g.strokeText(text, W / 2, y + H / 2 + 4, W - 60);
+    g.fillStyle = col; g.fillText(text, W / 2, y + H / 2 + 4, W - 60);
+  });
+  const t = tex(c, false);
+  const cell = (i) => [0.004, 1 - (i + 1) / UPPER.length + 0.002, 0.996, 1 - i / UPPER.length - 0.002];
+  return { texture: t, cell, count: UPPER.length };
 }
 
 /* ---------- 한글 간판 아틀라스 ---------- */
+// [간판 글자, 바탕, 글자색, 작은 글씨(있으면 아래 줄에)]
 const HSIGNS = [
-  ["약국", "#1f8a4c", "#ffffff"], ["24시 편의점", "#ffffff", "#1d4fa8"], ["치킨", "#d4291c", "#fff3c4"], ["분식", "#f2c230", "#3a1f05"],
-  ["부동산", "#ffffff", "#c22a2a"], ["세탁소", "#2a6fd1", "#ffffff"], ["미용실", "#e9e4dc", "#5a2a6a"], ["카페", "#2a2420", "#f2d9a6"],
+  ["약국", "#1f8a4c", "#ffffff", "PHARMACY"], ["24시 편의점", "#ffffff", "#1d4fa8", "24 HOURS"], ["치킨", "#d4291c", "#fff3c4", "후라이드 · 양념 · 배달"], ["분식", "#f2c230", "#3a1f05", "떡볶이 · 김밥 · 순대"],
+  ["부동산", "#ffffff", "#c22a2a", "공인중개사사무소"], ["세탁소", "#2a6fd1", "#ffffff", "수선 · 드라이"], ["미용실", "#e9e4dc", "#5a2a6a", "HAIR"], ["카페", "#2a2420", "#f2d9a6", "COFFEE & DESSERT"],
   ["수학학원", "#0f3d8a", "#ffe45c"], ["내과의원", "#ffffff", "#1b6e4a"], ["치과", "#ffffff", "#1f5fb0"], ["한의원", "#5a2618", "#f6e3c2"],
-  ["안경", "#111111", "#ffffff"], ["꽃집", "#f7eee6", "#c23b6a"], ["정육점", "#b81d24", "#ffffff"], ["반찬가게", "#f5e6c8", "#7a3d10"],
-  ["철물점", "#f2c230", "#111111"], ["인쇄", "#ffffff", "#333333"], ["떡집", "#ffffff", "#8a1f3a"], ["국밥", "#1a1a1a", "#ffcc33"],
-  ["빵집", "#f4e3c3", "#6a3b12"], ["휴대폰", "#e3002b", "#ffffff"], ["피아노학원", "#ffffff", "#6a2aa8"], ["태권도", "#1d3f9e", "#ffffff"],
-  ["마트", "#e8f2e4", "#1f7a3a"], ["호프", "#2b1a0e", "#f5b83d"], ["스터디카페", "#0e0e0e", "#e8e8e8"], ["순대국", "#f7f0e2", "#a32020"],
+  ["안경", "#111111", "#ffffff", "콘택트렌즈"], ["꽃집", "#f7eee6", "#c23b6a", "FLOWER"], ["정육점", "#b81d24", "#ffffff", "한우 · 한돈 전문"], ["반찬가게", "#f5e6c8", "#7a3d10", "매일 만드는 반찬"],
+  ["철물점", "#f2c230", "#111111", "열쇠 · 공구"], ["인쇄", "#ffffff", "#333333", "현수막 · 명함"], ["떡집", "#ffffff", "#8a1f3a", "방앗간"], ["국밥", "#1a1a1a", "#ffcc33", "24시 영업"],
+  ["빵집", "#f4e3c3", "#6a3b12", "BAKERY"], ["휴대폰", "#e3002b", "#ffffff", "개통 · 번호이동"], ["피아노학원", "#ffffff", "#6a2aa8"], ["태권도", "#1d3f9e", "#ffffff"],
+  ["마트", "#e8f2e4", "#1f7a3a", "과일 · 채소 · 생필품"], ["호프", "#2b1a0e", "#f5b83d", "생맥주 · 치킨"], ["스터디카페", "#0e0e0e", "#e8e8e8", "24H 무인"], ["순대국", "#f7f0e2", "#a32020", "머리고기 · 수육"],
   ["새솔 시립도서관", "#1c2a24", "#e6d7b0"], ["노래연습장", "#2a0f3a", "#ff7ad9"], ["PC방", "#0b1a33", "#4fd1ff"], ["헬스", "#111111", "#ff5533"]
 ];
+export const SIGN_NAMES = HSIGNS.map((s) => s[0]);
 const VSIGNS = [
   ["치과", "#ffffff", "#1f5fb0"], ["내과", "#ffffff", "#1b6e4a"], ["노래방", "#3a0f4a", "#ffd23d"], ["PC방", "#0b1a33", "#4fd1ff"],
   ["학원", "#0f3d8a", "#ffffff"], ["당구장", "#145a32", "#ffffff"], ["헬스", "#111111", "#ff5533"], ["태권도", "#c4161c", "#ffffff"]
@@ -219,15 +378,22 @@ export function signTextures(fontFamily) {
   const W = 256, H = 64;
   const [c, g] = canvas(W * 4, H * 8 + 512);
   g.fillStyle = "#000"; g.fillRect(0, 0, c.width, c.height);
-  HSIGNS.forEach(([text, bg, fg], i) => {
+  HSIGNS.forEach(([text, bg, fg, sub], i) => {
     const x = (i % 4) * W, y = Math.floor(i / 4) * H;
     g.fillStyle = bg; g.fillRect(x + 2, y + 2, W - 4, H - 4);
     g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(x + 2, y + H - 8, W - 4, 6);
     g.fillStyle = fg;
-    const size = text.length > 6 ? 30 : 40;
-    g.font = `800 ${size}px ${fontFamily}`;
     g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillText(text, x + W / 2, y + H / 2 + 1, W - 24);
+    if (sub) { // 큰 상호 + 아래 작은 글씨
+      g.font = `800 ${text.length > 6 ? 26 : 32}px ${fontFamily}`;
+      g.fillText(text, x + W / 2, y + 24, W - 24);
+      g.globalAlpha = 0.85; g.font = `700 13px ${fontFamily}`;
+      g.fillText(sub, x + W / 2, y + 50, W - 30);
+      g.globalAlpha = 1;
+    } else {
+      g.font = `800 ${text.length > 6 ? 30 : 40}px ${fontFamily}`;
+      g.fillText(text, x + W / 2, y + H / 2 + 1, W - 24);
+    }
   });
   // 세로 돌출 간판 (아래쪽 512px, 8개 × 128px 폭)
   VSIGNS.forEach(([text, bg, fg], i) => {

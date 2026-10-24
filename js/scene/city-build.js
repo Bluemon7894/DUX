@@ -9,7 +9,8 @@ import {
   ShapeUtils, Vector2, AdditiveBlending, DoubleSide
 } from "../../vendor/three.min.js";
 import {
-  ATLAS, facadeTextures, shopTextures, SHOP_VARIANTS, signTextures, SIGN_COUNT, LIBRARY_SIGN, VSIGN_COUNT,
+  ATLAS, facadeTextures, shopTextures, SHOPS, SIGN_NAMES, signTextures, LIBRARY_SIGN, VSIGN_COUNT,
+  bannerTexture, upperLetteringTexture, UPPER,
   asphaltTexture, pavingTexture, bisCanvas, glowTexture, flowTexture, labelTexture, adTexture, noParkingTexture, villaPlateTexture
 } from "./textures.js";
 import { rng } from "./city-gen.js";
@@ -364,6 +365,114 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     obox(trimAcc, o, t, n, 0.07, 0.35, (b.floors - 1) * floorH + 2.0, 0.09, C_GAS);
     for (let f = 0; f < b.floors; f++) obox(trimAcc, o, t, n, Math.min(L - 1.6, 2.6), f * floorH + 2.3, 0.07, 0.09, C_GAS);
   }
+  /* ---------- 1층 가게: 진열창 + 입체 틀 · 셔터 상자 · 간판 · 차양 · 가게 앞 소품 ---------- */
+  const shopTex = shopTextures(5);
+  const banners = bannerTexture(fontFamily);
+  const upper = upperLetteringTexture(fontFamily);
+  const signOffAcc = new Acc(), bannerAcc = new Acc(), letterAcc = new Acc(), roomAcc = new Acc(), shopPools = [];
+  const C_GRANITE = new Color("#3d3a37"), C_ALU = new Color("#b4b8bc"), C_BOX = new Color("#85888c"), C_TABLE = new Color("#e6e3dd");
+  const C_CHAIRS = [new Color("#c8262b"), new Color("#2a5fb8"), new Color("#2f8a4a")];
+  const C_ROOM_WARM = new Color("#ffcf8a"), C_ROOM_COOL = new Color("#dfe9ff");
+  const SHOP_W = SHOPS.reduce((s, x) => s + x.w, 0);
+  const pickShop = () => { let q = rd() * SHOP_W; for (const s of SHOPS) { q -= s.w; if (q <= 0) return s; } return SHOPS[0]; };
+  const cellUV = (c) => [[c[0], c[1]], [c[2], c[1]], [c[2], c[3]], [c[0], c[3]]];
+
+  function storefront(b, kind, gh, ox, oz, L, tx, tz, nx, nz) {
+    const lib = b.sign === "library";
+    const shop = lib ? null : pickShop();
+    const open = lib || rd() < shop.open;
+    const look = lib ? "lobby" : open ? shop.look : ["shutter", "shutter", "shutter2", "half"][Math.floor(rd() * 4)];
+    const t = [tx, tz], n = [nx, nz];
+    const P = (a, bb, y) => [ox + tx * a + nx * bb, y, oz + tz * a + nz * bb];
+    const at = (a) => [ox + tx * a, oz + tz * a];
+    shopAcc.quad(P(0.14, 0.03, 0), P(L - 0.14, 0.03, 0), P(L - 0.14, 0.03, gh), P(0.14, 0.03, gh), [nx, 0, nz], cellUV(shopTex.cell(look)));
+    // 양 끝 석재 기둥
+    obox(trimAcc, at(0), t, n, 0.28, 0, gh + 0.05, 0.16, C_GRANITE);
+    obox(trimAcc, at(L - 0.28), t, n, 0.28, 0, gh + 0.05, 0.16, C_GRANITE);
+    if (look.startsWith("shutter") || look === "half") {
+      obox(trimAcc, at(0.28), t, n, L - 0.56, gh - 0.42, 0.42, 0.3, C_BOX);                          // 셔터 상자
+      obox(trimAcc, at(0.28), t, n, 0.07, 0, gh - 0.42, 0.09, C_BOX, { ends: false });               // 셔터 레일
+      obox(trimAcc, at(L - 0.35), t, n, 0.07, 0, gh - 0.42, 0.09, C_BOX, { ends: false });
+    } else {
+      obox(trimAcc, at(0.28), t, n, L - 0.56, 0, 0.42, 0.06, C_GRANITE, { ends: false });            // 아래 석재
+      obox(trimAcc, at(0.28), t, n, L - 0.56, gh - 0.32, 0.32, 0.08, C_ALU, { ends: false });        // 위 인방
+      obox(trimAcc, at(0.28), t, n, L - 0.56, 2.32, 0.07, 0.07, C_ALU, { ends: false });             // 문 높이 가로살
+      const bays = Math.max(2, Math.round((L - 0.56) / 1.7));
+      for (let k = 1; k < bays; k++) obox(trimAcc, at(0.28 + (L - 0.56) * k / bays - 0.035), t, n, 0.07, 0.42, gh - 0.74, 0.07, C_ALU);
+      const ds = 0.28 + (L - 0.56) * Math.floor(bays / 2) / bays;                                    // 출입문 손잡이 한 쌍
+      obox(trimAcc, at(ds - 0.2), t, n, 0.04, 0.85, 0.8, 0.13, C_ALU);
+      obox(trimAcc, at(ds + 0.16), t, n, 0.04, 0.85, 0.8, 0.13, C_ALU);
+      shopPools.push([ox + tx * L / 2 + nx * 1.6, oz + tz * L / 2 + nz * 1.6, Math.min(L, 7)]);       // 가게 앞 바닥 불빛
+    }
+    // 간판: 가게 폭 가득 · 알루미늄 테두리 · 문 닫은 가게는 불 꺼짐
+    const y0 = gh + 0.05, y1 = gh + (kind === "com" ? 1.15 : 0.9), dd = 0.3;
+    const sc = signCell(lib ? LIBRARY_SIGN : Math.max(0, SIGN_NAMES.indexOf(shop.sign)));
+    (open ? signAcc : signOffAcc).quad(P(0.1, dd, y0), P(L - 0.1, dd, y0), P(L - 0.1, dd, y1), P(0.1, dd, y1), [nx, 0, nz], cellUV(sc));
+    obox(darkAcc, at(0.1), t, n, L - 0.2, y0, y1 - y0, dd - 0.01, null);
+    obox(trimAcc, at(0.06), t, n, L - 0.12, y1 - 0.02, 0.06, dd + 0.03, C_ALU);
+    obox(trimAcc, at(0.06), t, n, L - 0.12, y0 - 0.04, 0.06, dd + 0.03, C_ALU);
+    if (!open || !shop) return;
+    // 차양 (경사판 + 앞 드리개, 양면)
+    if (shop.awning) {
+      const col = new Color(shop.awning), under = col.clone().multiplyScalar(0.65);
+      const A = P(0.3, 0.05, gh - 0.02), B = P(L - 0.3, 0.05, gh - 0.02), Cc = P(L - 0.3, 1.4, gh - 0.64), D = P(0.3, 1.4, gh - 0.64);
+      const sl = Math.hypot(1.35, 0.62), up = [nx * 0.62 / sl, 1.35 / sl, nz * 0.62 / sl];
+      quadN(trimAcc, A, B, Cc, D, up, col); quadN(trimAcc, A, B, Cc, D, [-up[0], -up[1], -up[2]], under);
+      const E = P(0.3, 1.4, gh - 0.9), F = P(L - 0.3, 1.4, gh - 0.9);
+      quadN(trimAcc, D, Cc, F, E, [nx, 0, nz], col); quadN(trimAcc, D, Cc, F, E, [-nx, 0, -nz], under);
+    }
+    // 가게 앞: 치킨·호프는 플라스틱 탁자, 나머지는 X배너 (걷는 길 위는 피함)
+    if (shop.out === "tables") {
+      for (const f of [0.3, 0.72]) {
+        const cx = ox + tx * L * f + nx * 2.2, cz = oz + tz * L * f + nz * 2.2;
+        if (!nearRoute(cx, cz, 1.9)) plasticTable(cx, cz, tx, tz, nx, nz);
+      }
+    } else if (shop.out === "xbanner") {
+      const cx = ox + tx * L * 0.12 + nx * 1.1, cz = oz + tz * L * 0.12 + nz * 1.1;
+      if (!nearRoute(cx, cz, 1.3)) xBanner(cx, cz, tx, tz, nx, nz, banners.index(shop.banner));
+    }
+  }
+  function plasticTable(cx, cz, tx, tz, nx, nz) {
+    const t = [tx, tz], n = [nx, nz];
+    const at = (a, bb) => [cx + tx * a + nx * bb, cz + tz * a + nz * bb];
+    obox(trimAcc, at(-0.4, -0.4), t, n, 0.8, 0.7, 0.04, 0.8, C_TABLE);                                   // 상판
+    [[-0.34, -0.34], [0.3, -0.34], [-0.34, 0.3], [0.3, 0.3]].forEach(([a, bb]) => obox(trimAcc, at(a, bb), t, n, 0.04, 0, 0.7, 0.04, C_TABLE, { ends: false }));
+    const col = C_CHAIRS[Math.floor(rd() * C_CHAIRS.length)];
+    [[0, -0.75, 1], [0, 0.75, -1], [-0.75, 0, 0], [0.75, 0, 0]].forEach(([a, bb, side], k) => {
+      obox(trimAcc, at(a - 0.2, bb - 0.2), t, n, 0.4, 0.42, 0.04, 0.4, col);                              // 앉는 자리
+      if (k < 2) obox(trimAcc, at(a - 0.2, bb + (side > 0 ? -0.22 : 0.18)), t, n, 0.4, 0.46, 0.42, 0.04, col); // 등받이 (탁자 반대쪽)
+      else obox(trimAcc, at(a + (a < 0 ? -0.22 : 0.18), bb - 0.2), t, n, 0.04, 0.46, 0.42, 0.4, col);
+      obox(trimAcc, at(a - 0.18, bb - 0.18), t, n, 0.03, 0, 0.42, 0.03, col, { ends: false });
+      obox(trimAcc, at(a + 0.15, bb + 0.15), t, n, 0.03, 0, 0.42, 0.03, col, { ends: false });
+    });
+  }
+  function xBanner(cx, cz, tx, tz, nx, nz, bi) {
+    const t = [tx, tz], n = [nx, nz];
+    const at = (a, bb) => [cx + tx * a + nx * bb, cz + tz * a + nz * bb];
+    obox(trimAcc, at(-0.02, -0.34), t, n, 0.03, 0, 1.95, 0.03, C_ALU);                                      // 양쪽 대
+    obox(trimAcc, at(-0.02, 0.31), t, n, 0.03, 0, 1.95, 0.03, C_ALU);
+    obox(trimAcc, at(-0.25, -0.42), t, n, 0.5, 0, 0.05, 0.84, C_BOX);                                        // 받침
+    const c = banners.cell(bi);
+    const A = [cx - nx * 0.3, 0.3, cz - nz * 0.3], B = [cx + nx * 0.3, 0.3, cz + nz * 0.3];
+    quadN(bannerAcc, A, B, [B[0], 1.9, B[2]], [A[0], 1.9, A[2]], [-tx, 0, -tz], null, cellUV(c));            // 길 따라 오는 사람 쪽
+    quadN(bannerAcc, B, A, [A[0], 1.9, A[2]], [B[0], 1.9, B[2]], [tx, 0, tz], null, cellUV(c));
+  }
+  // 상업 건물 2·3층: 학원·스터디카페·PC방 등의 유리창 글씨, 영업 중이면 방 안 불빛까지
+  function upperLettering(b, x1, z1, L, tx, tz, nx, nz, floorH) {
+    for (let f = 1; f <= Math.min(2, b.floors - 1); f++) {
+      if (rd() > 0.62) continue;
+      const i = Math.floor(rd() * UPPER.length), lit = rd() < UPPER[i][2];
+      const w = Math.min(L - 0.8, 9), a0 = (L - w) / 2, hh = Math.min(w / 8, 1.25), yc = f * floorH + floorH * 0.5;
+      const P = (a, y, off) => [x1 + tx * a + nx * off, y, z1 + tz * a + nz * off];
+      if (lit) {
+        const room = (rd() < 0.5 ? C_ROOM_WARM : C_ROOM_COOL).clone().multiplyScalar(0.35 + rd() * 0.2);
+        quadN(roomAcc, P(0.3, f * floorH + 0.45, 0.025), P(L - 0.3, f * floorH + 0.45, 0.025), P(L - 0.3, f * floorH + floorH - 0.45, 0.025), P(0.3, f * floorH + floorH - 0.45, 0.025), [nx, 0, nz], room);
+      }
+      const shade = lit ? null : new Color(0.32, 0.32, 0.32);
+      quadN(letterAcc, P(a0, yc - hh / 2, 0.04), P(a0 + w, yc - hh / 2, 0.04), P(a0 + w, yc + hh / 2, 0.04), P(a0, yc + hh / 2, 0.04), [nx, 0, nz], shade, cellUV(upper.cell(i)));
+    }
+  }
+
   // 옥탑 계단실 (현관 위쪽 지붕에 작은 집 모양)
   function rooftopStair(b, tint, cx, cz, tx, tz, nx, nz) {
     const t = [tx, tz], inn = [-nx, -nz], h = b.h;
@@ -410,41 +519,22 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
       if (ent) entrance = ent;
       if (isFront) frontDir = [tx, tz, nx, nz];
       if (kind === "res" && front !== undefined && i === (front + 1) % pts.length && rd() < 0.7) gasPipe(b, x1, z1, L, tx, tz, nx, nz, floorH);
-      // 1층 상가 + 간판
+      // 1층 가게 + 간판 (+ 상업 건물 위층 유리창 글씨)
       if (isFront && b.shop) {
         const gh = kind === "com" ? 4.2 : 3.0;
         const segs = b.sign === "library" ? 1 : Math.max(1, Math.round(L / R(6, 9)));
-        for (let s = 0; s < segs; s++) {
-          const t0 = s / segs, t1 = (s + 1) / segs;
-          const ax = x1 + (x2 - x1) * t0 + nx * 0.06, az = z1 + (z2 - z1) * t0 + nz * 0.06;
-          const bx = x1 + (x2 - x1) * t1 + nx * 0.06, bz = z1 + (z2 - z1) * t1 + nz * 0.06;
-          const variant = b.sign === "library" ? 5 : chooseShop();
-          const cu = (variant % 4) / 4, cv = 1 - (Math.floor(variant / 4) + 1) / 2;
-          shopAcc.quad([ax, 0, az], [bx, 0, bz], [bx, gh, bz], [ax, gh, az], [nx, 0, nz], [[cu + 0.004, cv + 0.004], [cu + 0.246, cv + 0.004], [cu + 0.246, cv + 0.496], [cu + 0.004, cv + 0.496]]);
-          // 간판 박스
-          const inset = (L / segs) * 0.06;
-          const sx = ax + ((bx - ax) / (L / segs)) * inset, sz = az + ((bz - az) / (L / segs)) * inset;
-          const ex = bx - ((bx - ax) / (L / segs)) * inset, ez = bz - ((bz - az) / (L / segs)) * inset;
-          const y0 = gh + 0.05, y1 = gh + (kind === "com" ? 1.15 : 0.9), d = 0.32;
-          let sIdx = Math.floor(r() * SIGN_COUNT);
-          if (sIdx === LIBRARY_SIGN) sIdx = 0;
-          const cell = signCell(b.sign === "library" ? LIBRARY_SIGN : sIdx);
-          signAcc.quad([sx + nx * d, y0, sz + nz * d], [ex + nx * d, y0, ez + nz * d], [ex + nx * d, y1, ez + nz * d], [sx + nx * d, y1, sz + nz * d], [nx, 0, nz],
-            [[cell[0], cell[1]], [cell[2], cell[1]], [cell[2], cell[3]], [cell[0], cell[3]]]);
-          darkAcc.quad([sx, y1, sz], [ex, y1, ez], [ex + nx * d, y1, ez + nz * d], [sx + nx * d, y1, sz + nz * d], [0, 1, 0], [[0, 0], [1, 0], [1, 1], [0, 1]]);
-          darkAcc.quad([sx + nx * d, y0, sz + nz * d], [ex + nx * d, y0, ez + nz * d], [ex, y0, ez], [sx, y0, sz], [0, -1, 0], [[0, 0], [1, 0], [1, 1], [0, 1]]);
-        }
+        for (let s = 0; s < segs; s++) storefront(b, kind, gh, x1 + tx * (L * s / segs), z1 + tz * (L * s / segs), L / segs, tx, tz, nx, nz);
         // 상업 건물 모서리 세로 돌출 간판
-        if (kind === "com" && b.floors >= 4 && r() < 0.7) {
-          const cell = vsignCell(Math.floor(r() * VSIGN_COUNT));
-          const t = r() < 0.5 ? 0.04 : 0.96;
+        if (kind === "com" && b.floors >= 4 && rd() < 0.7) {
+          const cell = vsignCell(Math.floor(rd() * VSIGN_COUNT));
+          const t = rd() < 0.5 ? 0.04 : 0.96;
           const px = x1 + (x2 - x1) * t, pz = z1 + (z2 - z1) * t;
-          const tx = (x2 - x1) / L, tz = (z2 - z1) / L;
-          const y0 = 5.6, y1 = Math.min(h - 1.5, y0 + R(3, 5.5)), off0 = 0.2, off1 = 1.0;
+          const y0 = 5.6, y1 = Math.min(h - 1.5, y0 + 3 + rd() * 2.5), off0 = 0.2, off1 = 1.0;
           const A = [px + nx * off0, y0, pz + nz * off0], B = [px + nx * off1, y0, pz + nz * off1], C = [px + nx * off1, y1, pz + nz * off1], D = [px + nx * off0, y1, pz + nz * off0];
           signAcc.quad(A, B, C, D, [tx, 0, tz], [[cell[0], cell[1]], [cell[2], cell[1]], [cell[2], cell[3]], [cell[0], cell[3]]]);
           signAcc.quad(B, A, D, C, [-tx, 0, -tz], [[cell[0], cell[1]], [cell[2], cell[1]], [cell[2], cell[3]], [cell[0], cell[3]]]);
         }
+        if (kind === "com" && b.sign !== "library") upperLettering(b, x1, z1, L, tx, tz, nx, nz, floorH);
       }
       // 에어컨 실외기 (주거 건물, 정면 제외)
       if (kind === "res" && !isFront && L > 3) {
@@ -475,13 +565,6 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     }
   });
   function pick(arr) { return arr[Math.floor(r() * arr.length)]; }
-  function chooseShop() {
-    const x = r();
-    if (x < 0.62) return Math.floor(r() * 4);   // 새벽: 대부분 셔터
-    if (x < 0.7) return 7;
-    if (x < 0.76) return 4;                     // 24시간 편의점
-    return 5 + Math.floor(r() * 2);
-  }
 
   const wallMats = {};
   ["res", "com", "apt"].forEach((k) => {
@@ -491,13 +574,21 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     if (wallAcc[k].count) scene.add(new Mesh(wallAcc[k].build(), mat));
   });
   scene.add(new Mesh(roofAcc.build(), new MeshLambertMaterial({ vertexColors: true })));
-  const shopTex = shopTextures(5);
   const shopMat = new MeshLambertMaterial({ map: shopTex.map, emissiveMap: shopTex.emissive, emissive: "#ffffff", emissiveIntensity: 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
   lit.push({ mat: shopMat, night: 1.0, dawn: 0.55 });
   if (shopAcc.count) scene.add(new Mesh(shopAcc.build(), shopMat));
   const signMat = new MeshLambertMaterial({ map: signs.map, emissiveMap: signs.map, emissive: "#ffffff", emissiveIntensity: 1.2, side: DoubleSide });
   lit.push({ mat: signMat, night: 1.15, dawn: 0.35 });
   if (signAcc.count) scene.add(new Mesh(signAcc.build(), signMat));
+  // 문 닫은 가게 간판 (불 꺼짐) · X배너 · 위층 유리창 글씨 · 영업 중인 위층 방 불빛
+  const signOffMat = new MeshLambertMaterial({ map: signs.map, emissiveMap: signs.map, emissive: "#ffffff", emissiveIntensity: 0.12, side: DoubleSide });
+  lit.push({ mat: signOffMat, night: 0.14, dawn: 0.1 });
+  if (signOffAcc.count) scene.add(new Mesh(signOffAcc.build(), signOffMat));
+  const bannerMat = new MeshLambertMaterial({ map: banners.texture, emissiveMap: banners.texture, emissive: "#ffffff", emissiveIntensity: 0.45 });
+  lit.push({ mat: bannerMat, night: 0.5, dawn: 0.1 });
+  if (bannerAcc.count) scene.add(new Mesh(bannerAcc.build(), bannerMat));
+  if (roomAcc.count) scene.add(new Mesh(roomAcc.build(), new MeshBasicMaterial({ vertexColors: true, transparent: true, blending: AdditiveBlending, depthWrite: false })));
+  if (letterAcc.count) scene.add(new Mesh(letterAcc.build(), new MeshBasicMaterial({ map: upper.texture, vertexColors: true, transparent: true, depthWrite: false })));
   const darkMat = new MeshLambertMaterial({ color: "#26241f", side: DoubleSide });
   if (darkAcc.count) scene.add(new Mesh(darkAcc.build(), darkMat));
   // 건물 디테일
@@ -569,6 +660,7 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
   /* 골목: 전신주 + 전선, 주차 차량 */
   const poles = [], wires = [], secLights = [...entranceLights], parked = [], noParking = [], cones = [];
   entrancePools.forEach((p) => pools.push(p)); // 현관등 아래 바닥 빛
+  shopPools.forEach((p) => pools.push(p));     // 문 연 가게 앞 바닥 빛
   const rp = rng(4242); // 골목 소품 전용 (다른 배치의 무작위 순서를 바꾸지 않도록)
   const homeLine = city.route && city.route.w1 ? toPts(city.route.w1.slice(0, 4)) : null; // 집 앞 골목 (걷기 첫 구간)
   city.roads.forEach((rd) => {
