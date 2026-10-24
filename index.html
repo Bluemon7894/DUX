@@ -1,762 +1,302 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-tod="night">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DUX — 오늘의 나에게 맞는 길</title>
-  <meta name="description" content="DUX(덕스)는 오늘의 이동 상황과 선호를 평소 말하듯 입력하면 조건에 맞는 경로를 찾고, 이동 중 상황이 바뀌어도 처음 조건을 지킨 대안을 다시 안내하는 맞춤형 이동 앱입니다. 현재 출시 준비 중입니다." />
-  <meta name="theme-color" content="#F3F6FA" />
-  <script>document.documentElement.classList.add("js");</script>
+  <meta name="description" content="DUX(덕스)는 원하는 이동 조건을 말로 설정하면 그 조건에 맞는 경로를 찾고, 버스 지연 같은 상황이 생겨도 같은 조건으로 다시 안내하는 길찾기 앱입니다. Android 앱으로 내려받을 수 있습니다." />
+  <meta name="theme-color" content="#0B0A08" />
+  <link rel="icon" type="image/png" href="assets/dux-icon-64.png" />
+  <link rel="apple-touch-icon" href="assets/dux-icon-192.png" />
+  <!-- 실제 지도 변환본을 쓰려면 content 에 경로를 넣으세요. 예: data/city.json -->
+  <meta name="dux-city-data" content="" />
+  <script>
+    // 어떤 경로로 들어와도 첫 장면부터 시작 (브라우저의 스크롤 위치 복원 끔)
+    document.documentElement.classList.add("js");
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
+  </script>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="v4.css?v=20261024d" />
 </head>
 <body>
-  <!-- 아이콘 스프라이트 (모든 아이콘은 텍스트 라벨과 함께 사용) -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
     <defs>
-      <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="1.9"/><path d="M11.5 8.5 9 14l3 2.5 1 4.5M9 14l-2 6.5M11.8 9.2l3.2 2.8 3 .6M11.5 8.5 8 10l-1.5 3"/></symbol>
-      <symbol id="i-bus" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="15" rx="3"/><path d="M5 11h14M7.5 18v2.5M16.5 18v2.5"/><circle cx="8.5" cy="14.5" r=".9"/><circle cx="15.5" cy="14.5" r=".9"/></symbol>
-      <symbol id="i-subway" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="14" rx="4"/><path d="M6 10h12M9 17l-2 4M15 17l2 4"/><circle cx="9.5" cy="13.5" r=".9"/><circle cx="14.5" cy="13.5" r=".9"/></symbol>
-      <symbol id="i-bike" viewBox="0 0 24 24"><circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/><path d="M5.5 16 9.5 9h6l3 7M9.5 9l3.5 7h-7.5M13 6h3"/></symbol>
-      <symbol id="i-stairs" viewBox="0 0 24 24"><path d="M3 20h5v-4.5h4.5V11H17V6.5h4"/></symbol>
-      <symbol id="i-no-stairs" viewBox="0 0 24 24"><path d="M3 20h5v-4.5h4.5V11H17V6.5h4M4 4l16 16"/></symbol>
-      <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M5 8h13l-3.5-3.5M19 16H6l3.5 3.5"/></symbol>
-      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
-      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.2M12 17.2v.1"/></symbol>
-      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
-      <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8 12.2 2.8 2.8L16.2 9.5"/></symbol>
-      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 9A8 8 0 0 0 5.2 7.5M4.5 15a8 8 0 0 0 14.3 1.5M19.5 4v5h-5M4.5 20v-5h5"/></symbol>
-      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.2M12 7.8v.1"/></symbol>
-      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9zM18.5 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></symbol>
-      <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
-      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0"/></symbol>
-      <symbol id="i-pace" viewBox="0 0 24 24"><path d="M4 16.5a8 8 0 1 1 16 0M12 16.5 8 11.5"/><circle cx="12" cy="16.5" r="1"/></symbol>
-      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
-      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
-      <symbol id="i-data" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><path d="M5 5.5v13c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-13M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></symbol>
-      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9.5L5 20v-4H4z"/></symbol>
-      <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18H14a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h5.8"/></symbol>
-      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
-      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></symbol>
-      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z"/></symbol>
-      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
-      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
-      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
-      <symbol id="i-x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"/></symbol>
+      <symbol id="ic-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="2"/><path d="M11.5 8.5 9 14l3 2.5 1 4.5M9 14l-2 6.5M11.8 9.2l3.2 2.8 3 .6M11.5 8.5 8 10l-1.5 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-bus" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11h14M8 18v2.5M16 18v2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-sub" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 10h12M9 17l-2 4M15 17l2 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-turn" viewBox="0 0 24 24"><path d="M6 21v-8a4 4 0 0 1 4-4h9M15 5l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-up" viewBox="0 0 24 24"><path d="M12 21V4M6 10l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-cross" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16" stroke="currentColor" stroke-width="2.4"/></symbol>
+      <symbol id="ic-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-elev" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v18M8 9l-1.5 2h3zM16 13l1.5-2h-3z" stroke="currentColor" stroke-width="1.6" fill="currentColor"/></symbol>
+      <symbol id="ic-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     </defs>
   </svg>
 
-  <a href="#main" class="skip-link">본문으로 바로가기</a>
+  <a href="#c-download" class="skip">앱 받기로 바로가기</a>
 
-  <!-- 헤더 -->
-  <header class="site-header" id="site-header">
-    <div class="wrap header-inner">
-      <a href="#top" class="brand" aria-label="DUX 홈으로">
-        <svg class="brand-mark" width="34" height="34" viewBox="0 0 32 32" aria-hidden="true">
-          <rect width="32" height="32" rx="11" fill="#0D1B2A"/>
-          <path d="M8 22C11.5 22 12.5 16 16 16C19.5 16 20.5 10 24 10" stroke="#33CCFF" stroke-width="3.2" stroke-linecap="round" fill="none"/>
-          <circle cx="8" cy="22" r="3" fill="#16C79A"/>
-          <circle cx="24" cy="10" r="3" fill="#FFFFFF"/>
-        </svg>
-        <span class="brand-word">DUX</span>
-      </a>
-
-      <nav class="main-nav" id="main-nav" aria-label="주요 메뉴">
-        <a href="#problem">문제</a>
-        <a href="#how">사용 방법</a>
-        <a href="#features">기능</a>
-        <a href="#story">시나리오</a>
-        <a href="#trust">신뢰</a>
-      </nav>
-
-      <div class="header-actions">
-        <span class="status-pill" title="DUX 앱은 아직 출시되지 않았습니다.">
-          <span class="status-dot" aria-hidden="true"></span>출시 준비 중
-        </span>
-        <a href="#notify" class="btn btn-primary btn-sm">출시 알림 받기</a>
-        <button type="button" class="menu-btn" id="menu-btn" aria-expanded="false" aria-controls="main-nav" aria-label="메뉴 열기">
-          <svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg>
-        </button>
-      </div>
+  <!-- 배경: 1인칭으로 걷는 거리 -->
+  <div class="stage" aria-hidden="true">
+    <canvas id="scene"></canvas>
+    <div class="stage__fallback"></div>
+    <div class="labels">
+      <span class="lbl" data-lbl="stop"><b>정류장</b>버스정보안내기</span>
+      <span class="lbl lbl--alt" data-lbl="elevator"><b>대안</b>엘리베이터 입구</span>
+      <span class="lbl lbl--dest" data-lbl="dest"><b>도착</b>새솔 시립도서관</span>
     </div>
+  </div>
+  <div class="veil" id="veil" aria-hidden="true"><p>지하철 2정거장 → 400번 버스 · 계단 없이 이동 중</p></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="hd">
+    <a class="hd__brand" href="#c-intro" aria-label="DUX - 맞춤형 AI 안내앱 서비스, 처음으로">
+      <img src="assets/dux-icon-64.png" width="32" height="32" alt="" />
+      <span>DUX</span>
+      <span class="hd__sub">- 맞춤형 AI 안내앱 서비스</span>
+    </a>
+    <nav class="hd__nav" aria-label="기능 바로가기">
+      <a href="#c-speak">조건 설정</a>
+      <a href="#c-match">맞춤 경로</a>
+      <a href="#c-reroute">재탐색</a>
+      <a href="#c-trust">신뢰도</a>
+      <a href="#c-download" class="hd__dl">앱 받기</a>
+    </nav>
   </header>
 
-  <main id="main">
-    <!-- 페이지 전체를 잇는 경로선 (장식) -->
-    <svg class="page-route" id="page-route" aria-hidden="true" focusable="false">
-      <path class="page-route__base" />
-      <path class="page-route__draw" />
-      <circle class="page-route__head" r="6" />
-    </svg>
+  <div class="rail" aria-hidden="true"><i id="rail-fill"></i></div>
+  <div class="hud" aria-hidden="true"><span id="hud-time">--:--</span><span id="hud-name">출발 전</span></div>
 
-    <!-- 1. 히어로 -->
-    <section class="hero" id="top" aria-labelledby="hero-title" data-route-anchor>
-      <div class="hero-bg" aria-hidden="true">
-        <span class="blob blob-a"></span>
-        <span class="blob blob-b"></span>
-        <span class="blob blob-c"></span>
-      </div>
-
-      <div class="wrap hero-grid">
-        <div class="hero-copy">
-          <p class="eyebrow reveal"><span class="eyebrow-dot" aria-hidden="true"></span>AI 맞춤 이동 앱 · 출시 준비 중</p>
-          <h1 id="hero-title" class="hero-title reveal">오늘의 나에게<br /><span class="grad-text">맞는 길.</span></h1>
-          <p class="hero-sub reveal">
-            오늘의 상황과 선호를 평소 말하듯 이야기하면, DUX가 그 조건에 맞는 경로를 찾아요.
-            이동 중 버스가 늦어져도 <strong>처음 말한 조건을 지킨 대안</strong>을 다시 안내해요.
-          </p>
-          <div class="cta-row reveal">
-            <a href="#how" class="btn btn-primary btn-lg">DUX 알아보기 <svg class="ic" aria-hidden="true"><use href="#i-arrow"/></svg></a>
-            <a href="#notify" class="btn btn-ghost btn-lg"><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg> 출시 알림 받기</a>
-          </div>
-          <ul class="hero-points reveal" aria-label="DUX 핵심 특징">
-            <li><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>말로 조건 입력</li>
-            <li><svg class="ic" aria-hidden="true"><use href="#i-route"/></svg>도보·버스·지하철·자전거</li>
-            <li><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>상황 바뀌면 다시 추천</li>
-          </ul>
+  <!-- 손에 든 휴대폰: 실제 DUX 앱 화면 -->
+  <div class="hand" id="hand" data-s="lock" aria-hidden="true">
+    <div class="ph">
+      <div class="ph__notch"></div>
+      <div class="ph__scr">
+        <canvas class="pmap" id="phone-map"></canvas>
+        <div class="sbar">
+          <span class="sbar__t" data-clock="trip">--:--</span>
+          <span class="sbar__i">
+            <svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+            <span class="sbar__lte">5G</span>
+            <svg viewBox="0 0 27 12" class="bat"><rect x="0.5" y="0.5" width="23" height="11" rx="3" fill="none" stroke="currentColor"/><rect x="2" y="2" width="16" height="8" rx="1.6"/><rect x="24.5" y="4" width="2" height="4" rx="1"/></svg>
+          </span>
         </div>
 
-        <div class="hero-stage" id="hero-stage">
-          <canvas id="hero-canvas" class="hero-canvas" aria-hidden="true"></canvas>
-
-          <figure class="hero-phone-wrap" aria-label="DUX 앱 화면 예시: 사용자가 '오늘 다리가 아파서 천천히 걸을 거야. 계단은 피하고, 5분 정도 더 걸려도 환승이 적은 길로 가고 싶어'라고 입력하자, DUX가 천천히 걷기·계단 피하기·환승 적게·5분 추가 허용 조건으로 정리하고 31분짜리 계단 없는 맞춤 경로를 보여줍니다.">
-            <div class="phone phone--hero tilt" aria-hidden="true">
-              <div class="phone__notch"></div>
-              <div class="phone__screen">
-                <div class="ui-status"><span>9:41</span><span class="ui-status__icons"><i></i><i></i><i></i></span></div>
-                <div class="ui-appbar">
-                  <span class="ui-appbar__brand">DUX</span>
-                  <span class="ui-demo">시연용 화면</span>
-                </div>
-                <div class="ui-body">
-                  <div class="ui-bubble ui-bubble--user seq" style="--d:0">
-                    오늘 다리가 아파서 천천히 걸을 거야. 계단은 피하고, 5분 정도 더 걸려도 환승이 적은 길로 가고 싶어.
-                  </div>
-                  <div class="ui-bubble ui-bubble--ai seq" style="--d:1">
-                    <span class="ui-ai-label"><svg class="ic"><use href="#i-spark"/></svg>이렇게 이해했어요</span>
-                    <span class="ui-chips">
-                      <span class="ui-chip"><svg class="ic"><use href="#i-pace"/></svg>천천히 걷기</span>
-                      <span class="ui-chip"><svg class="ic"><use href="#i-no-stairs"/></svg>계단 피하기</span>
-                      <span class="ui-chip"><svg class="ic"><use href="#i-transfer"/></svg>환승 적게</span>
-                      <span class="ui-chip"><svg class="ic"><use href="#i-clock"/></svg>+5분까지 괜찮아요</span>
-                    </span>
-                  </div>
-                  <div class="ui-route seq" style="--d:2">
-                    <div class="ui-route__top">
-                      <span class="ui-tag ui-tag--blue">맞춤 경로</span>
-                      <span class="ui-route__time">31<small>분</small></span>
-                    </div>
-                    <div class="ui-modebar">
-                      <span class="m m--walk" style="--g:3"><svg class="ic"><use href="#i-walk"/></svg></span>
-                      <span class="m m--bus" style="--g:16"><svg class="ic"><use href="#i-bus"/></svg>16</span>
-                      <span class="m m--subway" style="--g:7"><svg class="ic"><use href="#i-subway"/></svg>7</span>
-                      <span class="m m--walk" style="--g:5"><svg class="ic"><use href="#i-walk"/></svg></span>
-                    </div>
-                    <div class="ui-route__tags">
-                      <span class="ui-tag ui-tag--ok"><svg class="ic"><use href="#i-check"/></svg>계단 0곳</span>
-                      <span class="ui-tag">환승 1회</span>
-                      <span class="ui-tag">최단보다 +4분</span>
-                    </div>
-                    <p class="ui-why"><svg class="ic"><use href="#i-spark"/></svg>천천히 걷는 속도로 계산했고, 환승은 엘리베이터로만 해요.</p>
-                  </div>
-                  <div class="ui-route ui-route--dim seq" style="--d:3">
-                    <div class="ui-route__top">
-                      <span class="ui-tag ui-tag--warn"><svg class="ic"><use href="#i-alert"/></svg>최단 · 계단 있음</span>
-                      <span class="ui-route__time">27<small>분</small></span>
-                    </div>
-                    <p class="ui-why">‘계단 피하기’ 조건에 맞지 않아 뒤로 보냈어요.</p>
-                  </div>
-                </div>
-                <div class="ui-input">
-                  <span>말로 조건을 바꿔 보세요</span>
-                  <span class="ui-input__mic"><svg class="ic"><use href="#i-mic"/></svg></span>
-                </div>
-              </div>
-            </div>
-          </figure>
-
-          <div class="float-chip float-chip--a" aria-hidden="true"><svg class="ic"><use href="#i-pace"/></svg>천천히 걷는 속도로 계산</div>
-          <div class="float-chip float-chip--b" aria-hidden="true"><svg class="ic"><use href="#i-no-stairs"/></svg>계단 없는 환승</div>
-          <div class="float-chip float-chip--c" aria-hidden="true"><svg class="ic"><use href="#i-refresh"/></svg>지연되면 다시 안내</div>
-
-          <div class="hero-stage__foot">
-            <span class="demo-note"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>앱 화면과 경로 그래픽은 시연용 예시예요</span>
-            <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="false">
-              <svg class="ic" aria-hidden="true"><use href="#i-pause"/></svg><span>모션 멈추기</span>
-            </button>
+        <!-- 잠금화면 -->
+        <div class="ps ps--lock" data-ps="lock">
+          <p class="lk__date" data-date>--</p>
+          <p class="lk__time" data-clock="now">--:--</p>
+          <div class="noti">
+            <img class="appic" src="assets/dux-icon-64.png" alt="" />
+            <div><p class="noti__app">DUX<span>지금</span></p><p class="noti__msg">출발 전에 오늘 원하는 이동 방식을 말해 주세요. 그대로 길을 찾아 드릴게요.</p></div>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- 2. 이동 중 겪는 문제 -->
-    <section class="section problem" id="problem" aria-labelledby="problem-title" data-route-anchor>
-      <div class="wrap">
-        <header class="section-head reveal">
-          <p class="kicker">이동 중 겪는 문제</p>
-          <h2 id="problem-title" class="section-title">길찾기는 ‘평균의 나’를<br class="br-md" /> 기준으로 안내해요.</h2>
-          <p class="section-lead">하지만 이동하는 날의 나는 매번 달라요.</p>
-        </header>
-
-        <div class="problem-grid">
-          <article class="p-card reveal">
-            <div class="p-visual" aria-hidden="true">
-              <div class="mini-card">
-                <div class="pace-row">
-                  <span class="pace-label">안내 시간 <em>평균 걸음 기준</em></span>
-                  <span class="pace-bar"><i style="--w:62%"></i></span>
-                  <b>도보 12분</b>
-                </div>
-                <div class="pace-row pace-row--me">
-                  <span class="pace-label">오늘의 나 <em>천천히 걷는 날</em></span>
-                  <span class="pace-bar"><i style="--w:88%"></i></span>
-                  <b>약 16분</b>
-                </div>
-              </div>
-            </div>
-            <h3 class="p-title">오늘은 천천히 걷고 싶은데</h3>
-            <p class="p-desc">컨디션이 다른 날에도 안내 시간은 평균 보행 속도 기준이에요.</p>
-          </article>
-
-          <article class="p-card reveal">
-            <div class="p-visual" aria-hidden="true">
-              <div class="mini-card">
-                <div class="transfer-line">
-                  <span class="tl-node"><svg class="ic"><use href="#i-bus"/></svg></span>
-                  <span class="tl-seg"></span>
-                  <span class="tl-node tl-node--warn"><svg class="ic"><use href="#i-stairs"/></svg></span>
-                  <span class="tl-seg"></span>
-                  <span class="tl-node"><svg class="ic"><use href="#i-subway"/></svg></span>
-                </div>
-                <div class="warn-strip"><svg class="ic"><use href="#i-alert"/></svg>환승 통로에 계단 구간 포함</div>
-                <div class="muted-strip"><svg class="ic"><use href="#i-x"/></svg>‘계단 피하기’ 반영 안 됨</div>
-              </div>
-            </div>
-            <h3 class="p-title">계단을 피하고 싶은데</h3>
-            <p class="p-desc">환승 경로에 계단이 있는지 미리 알기 어렵고, 피하는 길도 직접 찾아야 해요.</p>
-          </article>
-
-          <article class="p-card reveal">
-            <div class="p-visual" aria-hidden="true">
-              <div class="mini-card">
-                <div class="noti">
-                  <span class="noti-icon"><svg class="ic"><use href="#i-bus"/></svg></span>
-                  <span><b>402번 버스 9분 지연</b><small>다음 환승을 놓칠 수 있어요</small></span>
-                </div>
-                <div class="search-ghost">
-                  <svg class="ic"><use href="#i-search"/></svg>
-                  <span>대안은 직접 다시 검색…</span>
-                  <span class="ghost-caret"></span>
-                </div>
-              </div>
-            </div>
-            <h3 class="p-title">버스가 늦어졌는데</h3>
-            <p class="p-desc">환승이 어려워져도, 내 조건에 맞는 대안은 처음부터 다시 찾아야 해요.</p>
-          </article>
+        <!-- 음성으로 조건 입력 -->
+        <div class="ps" data-ps="voice">
+          <div class="search"><svg><use href="#ic-search"/></svg><span>새솔 시립도서관</span><span class="search__mic"><svg><use href="#ic-mic"/></svg></span></div>
+          <div class="sheet">
+            <p class="sheet__cap">조건을 말로 설정하기</p>
+            <p class="voice__msg" id="type-msg" data-text="오늘 다리가 아파서 천천히 걸을 거야. 계단은 피하고, 5분 정도 더 걸려도 환승이 적은 길로 가고 싶어."></p>
+            <div class="voice__bar"><span class="mic"><svg><use href="#ic-mic"/></svg></span><div class="wave"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div></div>
+          </div>
         </div>
-      </div>
-    </section>
 
-    <!-- 3. 사용 방법 -->
-    <section class="section how" id="how" aria-labelledby="how-title" data-route-anchor>
-      <div class="wrap">
-        <header class="section-head reveal">
-          <p class="kicker">DUX 사용 방법</p>
-          <h2 id="how-title" class="section-title">말하고, 맞추고,<br class="br-md" /> 다시 안내해요.</h2>
-        </header>
+        <!-- 조건 맞춤 경로 -->
+        <div class="ps" data-ps="understood">
+          <div class="od"><p><i class="od__o"></i>현재 위치</p><p><i class="od__d"></i>새솔 시립도서관</p></div>
+          <div class="sheet">
+            <p class="sheet__cap">내 조건 <span class="tag">음성으로 설정됨</span></p>
+            <div class="chips"><span>천천히 걷기</span><span>계단 제외</span><span>환승 1회 이하</span><span>+5분 허용</span></div>
+            <div class="ropt ropt--best">
+              <p class="ropt__head"><b>31분</b><span><em data-t="31">--:--</em> 도착</span><span class="badge">조건 충족</span></p>
+              <div class="legbar"><i style="--g:4"><svg><use href="#ic-walk"/></svg></i><i class="bus" style="--g:14"><svg><use href="#ic-bus"/></svg>402</i><i class="sub" style="--g:9"><svg><use href="#ic-sub"/></svg>2호선</i><i style="--g:4"><svg><use href="#ic-walk"/></svg></i></div>
+              <p class="ropt__meta">계단 0곳 · 환승 1회(엘리베이터) · 도보 8분</p>
+            </div>
+            <div class="ropt ropt--off">
+              <p class="ropt__head"><b>27분</b><span class="badge badge--no">계단 2곳</span></p>
+              <p class="ropt__meta">최단 경로 · 내 조건과 맞지 않아 제외했어요</p>
+            </div>
+            <span class="pbtn">안내 시작</span>
+          </div>
+        </div>
 
-        <div class="how-grid">
-          <ol class="how-steps">
-            <li class="step" data-step="0">
-              <span class="step-num">01</span>
-              <h3 class="step-title"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg>말하기</h3>
-              <p class="step-desc">오늘의 이동 상황과 선호를 평소 말하듯 입력해요. 필터를 하나씩 고르지 않아도 돼요.</p>
-              <p class="step-quote">“오늘 다리가 아파서 천천히 걸을 거야. 계단은 피하고, 5분 정도 더 걸려도 환승이 적은 길로 가고 싶어.”</p>
-              <div class="step-media" aria-hidden="true"></div>
-            </li>
-            <li class="step" data-step="1">
-              <span class="step-num">02</span>
-              <h3 class="step-title"><svg class="ic" aria-hidden="true"><use href="#i-route"/></svg>맞추기</h3>
-              <p class="step-desc">DUX가 문장을 경로 조건으로 정리하고, 도보·버스·지하철·자전거를 조합해 조건에 맞는 경로를 찾아요. 가장 빠른 길이 조건에 맞지 않으면 그 이유도 알려줘요.</p>
-              <div class="step-media" aria-hidden="true"></div>
-            </li>
-            <li class="step" data-step="2">
-              <span class="step-num">03</span>
-              <h3 class="step-title"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg>다시 안내하기</h3>
-              <p class="step-desc">버스 지연이나 위치 변화로 기존 경로가 어려워지면, 처음 요청한 조건을 그대로 유지한 대안을 다시 추천해요. 바꿀지 말지는 내가 정해요.</p>
-              <div class="step-media" aria-hidden="true"></div>
-            </li>
-          </ol>
+        <!-- 걷기 안내 -->
+        <div class="ps" data-ps="nav">
+          <div class="turn"><span class="turn__ic"><svg><use href="#ic-turn"/></svg></span><div><p class="turn__dist"><b id="nav-dist">--</b>m</p><p class="turn__txt" id="nav-step">경로를 따라 이동</p></div></div>
+          <div class="navfoot"><div><p class="navfoot__eta"><b data-t="31">--:--</b> 도착 예정</p><p class="navfoot__sub">정류장까지 <span id="nav-rem">--</span>m · 계단 없는 길</p></div><span class="xbtn">종료</span></div>
+        </div>
 
-          <div class="how-sticky">
-            <div class="how-phone-wrap">
-              <div class="step-rail" aria-hidden="true"><i></i><i></i><i></i></div>
-              <div class="phone phone--how" id="how-phone" data-step="0" aria-hidden="true">
-                <div class="phone__notch"></div>
-                <div class="phone__screen">
-                  <div class="ui-status"><span>9:41</span><span class="ui-status__icons"><i></i><i></i><i></i></span></div>
+        <!-- 지연 알림 -->
+        <div class="ps" data-ps="alert">
+          <div class="turn turn--wait"><span class="turn__ic"><svg><use href="#ic-bus"/></svg></span><div><p class="turn__dist">402번</p><p class="turn__txt">정류장에서 기다리는 중</p></div></div>
+          <div class="push">
+            <img class="appic" src="assets/dux-icon-64.png" alt="" />
+            <div><p class="noti__app">DUX<span>지금</span></p><p class="push__title">타려던 402번 버스가 9분 늦어져요</p><p class="push__body">이대로면 2호선 환승을 놓칠 수 있어요. 처음 말한 조건 그대로 다른 길을 찾고 있어요.</p></div>
+          </div>
+          <div class="navfoot"><div><p class="navfoot__eta"><b class="warn" data-t="40">--:--</b> 도착 예상</p><p class="navfoot__sub">지연 반영 · 환승 실패 가능성 높음</p></div><span class="xbtn">종료</span></div>
+        </div>
 
-                  <!-- 화면 1: 말하기 -->
-                  <div class="screen" data-screen="0">
-                    <div class="ui-appbar"><span class="ui-appbar__title">어디로 갈까요?</span><span class="ui-demo">시연용</span></div>
-                    <div class="ui-body">
-                      <div class="ui-od">
-                        <span><i class="od-dot od-dot--a"></i>한빛동 집 앞</span>
-                        <span><i class="od-dot od-dot--b"></i>새솔 시립도서관</span>
-                      </div>
-                      <div class="ui-bubble ui-bubble--user">오늘 다리가 아파서 천천히 걸을 거야. 계단은 피하고, 5분 정도 더 걸려도 환승이 적은 길로 가고 싶어.</div>
-                      <div class="ui-bubble ui-bubble--ai">
-                        <span class="ui-ai-label"><svg class="ic"><use href="#i-spark"/></svg>경로 조건으로 정리했어요</span>
-                        <span class="ui-cond"><svg class="ic"><use href="#i-pace"/></svg>보행 속도<b>천천히</b></span>
-                        <span class="ui-cond"><svg class="ic"><use href="#i-no-stairs"/></svg>계단<b>제외 (필수)</b></span>
-                        <span class="ui-cond"><svg class="ic"><use href="#i-transfer"/></svg>환승<b>최소</b></span>
-                        <span class="ui-cond"><svg class="ic"><use href="#i-clock"/></svg>추가 시간<b>+5분까지</b></span>
-                      </div>
-                    </div>
-                    <div class="ui-input ui-input--active"><span>음성으로 말하는 중…</span><span class="ui-input__mic ui-input__mic--on"><svg class="ic"><use href="#i-mic"/></svg></span></div>
-                  </div>
+        <!-- 조건 유지 재탐색 -->
+        <div class="ps" data-ps="compare">
+          <div class="sheet">
+            <p class="sheet__cap">경로를 다시 찾았어요 <span class="tag">내 조건 유지</span></p>
+            <div class="ropt ropt--best">
+              <p class="ropt__head"><b>35분</b><span><em data-t="35">--:--</em> 도착</span><span class="badge">계단 0곳</span></p>
+              <div class="legbar"><i style="--g:3"><svg><use href="#ic-walk"/></svg></i><i class="sub" style="--g:6"><svg><use href="#ic-sub"/></svg>2정거장</i><i class="bus" style="--g:22"><svg><use href="#ic-bus"/></svg>400</i><i style="--g:4"><svg><use href="#ic-walk"/></svg></i></div>
+              <p class="ropt__meta"><svg><use href="#ic-elev"/></svg>엘리베이터 입구로 · 환승 1회</p>
+            </div>
+            <div class="ropt ropt--off">
+              <p class="ropt__head"><b>32분</b><span class="badge badge--no">계단 2곳</span></p>
+              <p class="ropt__meta">더 빠르지만 내 조건과 달라 추천하지 않아요</p>
+            </div>
+            <p class="reason"><svg><use href="#ic-info"/></svg>4분 더 걸리지만 계단 없이 갈 수 있는 경로예요.</p>
+            <span class="pbtn">이 경로로 변경</span>
+          </div>
+        </div>
 
-                  <!-- 화면 2: 맞추기 -->
-                  <div class="screen" data-screen="1">
-                    <div class="ui-map">
-                      <svg viewBox="0 0 280 170" class="ui-map__svg">
-                        <rect width="280" height="170" fill="#E9EFF6"/>
-                        <path d="M0 120 C70 110 120 140 280 100 L280 130 C130 170 70 145 0 150Z" fill="#CFE6FA"/>
-                        <rect x="190" y="18" width="70" height="44" rx="14" fill="#D7F2E6"/>
-                        <path d="M0 60H280M0 95H280M60 0V170M150 0V170M220 0V170" stroke="#fff" stroke-width="6"/>
-                        <path class="map-fast" d="M30 140 L60 95 L150 95 L150 60 L240 40" />
-                        <path class="map-best" pathLength="1" d="M30 140 L30 60 Q30 50 40 50 L140 50 Q150 50 160 45 L240 40" />
-                        <circle cx="30" cy="140" r="6" class="map-start"/>
-                        <circle cx="240" cy="40" r="6" class="map-end"/>
-                      </svg>
-                    </div>
-                    <div class="ui-body ui-body--sheet">
-                      <div class="ui-route ui-route--selected">
-                        <div class="ui-route__top">
-                          <span class="ui-tag ui-tag--blue"><svg class="ic"><use href="#i-check-circle"/></svg>추천 · 조건 3개 충족</span>
-                          <span class="ui-route__time">31<small>분</small></span>
-                        </div>
-                        <div class="ui-modebar">
-                          <span class="m m--walk" style="--g:3"><svg class="ic"><use href="#i-walk"/></svg></span>
-                          <span class="m m--bus" style="--g:16"><svg class="ic"><use href="#i-bus"/></svg>402</span>
-                          <span class="m m--subway" style="--g:7"><svg class="ic"><use href="#i-subway"/></svg>7</span>
-                          <span class="m m--walk" style="--g:5"><svg class="ic"><use href="#i-walk"/></svg></span>
-                        </div>
-                        <p class="ui-why"><svg class="ic"><use href="#i-spark"/></svg>4분 더 걸리지만 엘리베이터로만 환승해요.</p>
-                      </div>
-                      <div class="ui-route ui-route--dim">
-                        <div class="ui-route__top">
-                          <span class="ui-tag ui-tag--warn"><svg class="ic"><use href="#i-alert"/></svg>최단 · 계단 있음</span>
-                          <span class="ui-route__time">27<small>분</small></span>
-                        </div>
-                        <p class="ui-why">‘계단 피하기’ 조건에 맞지 않아요.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 화면 3: 다시 안내하기 -->
-                  <div class="screen" data-screen="2">
-                    <div class="ui-map ui-map--short">
-                      <svg viewBox="0 0 280 130" class="ui-map__svg">
-                        <rect width="280" height="130" fill="#E9EFF6"/>
-                        <path d="M0 45H280M0 85H280M60 0V130M150 0V130M220 0V130" stroke="#fff" stroke-width="6"/>
-                        <path class="map-old" d="M30 115 L30 45 L150 45 L240 25" />
-                        <path class="map-new" pathLength="1" d="M30 115 L30 85 L220 85 Q235 85 238 70 L240 25" />
-                        <circle cx="30" cy="100" r="7" class="map-me"/>
-                        <circle cx="240" cy="25" r="6" class="map-end"/>
-                      </svg>
-                    </div>
-                    <div class="ui-body ui-body--sheet">
-                      <div class="ui-alert"><svg class="ic"><use href="#i-alert"/></svg><span><b>402번 버스 지연 예상</b>기존 환승이 어려울 수 있어요</span></div>
-                      <div class="ui-keep">
-                        <span class="ui-keep__label"><svg class="ic"><use href="#i-shield"/></svg>처음 조건 유지</span>
-                        <span class="ui-mini">천천히</span><span class="ui-mini">계단 제외</span><span class="ui-mini">환승 적게</span>
-                      </div>
-                      <div class="ui-route ui-route--new">
-                        <div class="ui-route__top">
-                          <span class="ui-tag ui-tag--ok"><svg class="ic"><use href="#i-refresh"/></svg>새 대안</span>
-                          <span class="ui-route__time">35<small>분</small></span>
-                        </div>
-                        <p class="ui-why"><svg class="ic"><use href="#i-spark"/></svg>4분 더 걸리지만 계단 없이 갈 수 있는 경로예요.</p>
-                        <div class="ui-actions"><span class="ui-btn ui-btn--primary">이 경로로 변경</span><span class="ui-btn">기존 유지</span></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        <!-- 예측 신뢰도 -->
+        <div class="ps" data-ps="trust">
+          <div class="turn"><span class="turn__ic"><svg><use href="#ic-up"/></svg></span><div><p class="turn__dist"><b id="nav3-dist">--</b>m</p><p class="turn__txt">도서관 앞 횡단보도까지 직진</p></div></div>
+          <div class="navfoot navfoot--tall">
+            <div>
+              <p class="navfoot__eta"><b data-t="39">--:--</b> 도착 예정 <span class="pm">±2분</span></p>
+              <p class="conf"><span class="bars"><i></i><i></i><i class="off"></i></span>예측 신뢰도 보통</p>
+              <p class="navfoot__sub">400번 버스 위치가 2분 전 정보라 오차가 있을 수 있어요.</p>
             </div>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- 4. 핵심 기능 -->
-    <section class="section features" id="features" aria-labelledby="features-title" data-route-anchor>
-      <div class="wrap">
-        <header class="section-head reveal">
-          <p class="kicker">핵심 기능</p>
-          <h2 id="features-title" class="section-title">가장 빠른 길보다,<br class="br-md" /> 내가 실제로 갈 수 있는 길.</h2>
-        </header>
-
-        <div class="feature-grid">
-          <article class="f-card reveal">
-            <div class="f-visual" aria-hidden="true">
-              <div class="fv-prompt">
-                <span class="fv-prompt__icon"><svg class="ic"><use href="#i-mic"/></svg></span>
-                <span class="fv-prompt__text" id="typewriter">오늘 다리가 아파서 천천히 걸을래.</span><span class="fv-caret"></span>
-              </div>
-              <div class="fv-arrow"><svg class="ic"><use href="#i-spark"/></svg>조건으로 변환</div>
-            </div>
-            <h3 class="f-title">자연어로 이동 조건 입력</h3>
-            <p class="f-desc">메뉴를 찾지 않고, 오늘의 상황을 문장이나 음성으로 말하면 돼요.</p>
-          </article>
-
-          <article class="f-card reveal">
-            <div class="f-visual" aria-hidden="true">
-              <ul class="fv-toggles">
-                <li><svg class="ic"><use href="#i-pace"/></svg>천천히 걷기<span class="sw sw--on"><i></i>켜짐</span></li>
-                <li><svg class="ic"><use href="#i-no-stairs"/></svg>계단 피하기<span class="sw sw--on"><i></i>켜짐</span></li>
-                <li><svg class="ic"><use href="#i-transfer"/></svg>환승 적게<span class="sw sw--on"><i></i>켜짐</span></li>
-                <li><svg class="ic"><use href="#i-bike"/></svg>자전거 포함<span class="sw"><i></i>꺼짐</span></li>
-              </ul>
-            </div>
-            <h3 class="f-title">내 조건을 경로에 반영</h3>
-            <p class="f-desc">천천히 걷기, 계단 피하기, 환승 적게처럼 말한 조건이 경로 탐색 기준이 돼요.</p>
-          </article>
-
-          <article class="f-card reveal">
-            <div class="f-visual" aria-hidden="true">
-              <div class="fv-combo">
-                <div class="fv-combo__row">
-                  <span class="fv-combo__label">조합 A</span>
-                  <div class="ui-modebar ui-modebar--lg">
-                    <span class="m m--walk" style="--g:3"><svg class="ic"><use href="#i-walk"/></svg>3</span>
-                    <span class="m m--bus" style="--g:12"><svg class="ic"><use href="#i-bus"/></svg>12</span>
-                    <span class="m m--subway" style="--g:9"><svg class="ic"><use href="#i-subway"/></svg>9</span>
-                  </div>
-                </div>
-                <div class="fv-combo__row">
-                  <span class="fv-combo__label">조합 B</span>
-                  <div class="ui-modebar ui-modebar--lg">
-                    <span class="m m--bike" style="--g:10"><svg class="ic"><use href="#i-bike"/></svg>10</span>
-                    <span class="m m--subway" style="--g:11"><svg class="ic"><use href="#i-subway"/></svg>11</span>
-                    <span class="m m--walk" style="--g:3"><svg class="ic"><use href="#i-walk"/></svg>2</span>
-                  </div>
-                </div>
-                <div class="fv-legend">
-                  <span><svg class="ic"><use href="#i-walk"/></svg>도보</span>
-                  <span><svg class="ic"><use href="#i-bus"/></svg>버스</span>
-                  <span><svg class="ic"><use href="#i-subway"/></svg>지하철</span>
-                  <span><svg class="ic"><use href="#i-bike"/></svg>자전거</span>
-                </div>
-              </div>
-            </div>
-            <h3 class="f-title">도보·버스·지하철·자전거 조합</h3>
-            <p class="f-desc">한 가지 수단만이 아니라, 조건에 맞는 수단의 조합을 찾아요.</p>
-          </article>
-
-          <article class="f-card reveal">
-            <div class="f-visual" aria-hidden="true">
-              <div class="fv-reroute">
-                <svg viewBox="0 0 240 120" class="fv-reroute__svg">
-                  <path d="M0 40H240M0 80H240M70 0V120M160 0V120" stroke="#fff" stroke-width="7"/>
-                  <path class="rr-a" d="M20 100 L70 100 L70 40 L160 40 L220 20"/>
-                  <path class="rr-b" d="M20 100 L160 100 Q168 100 170 90 L220 20"/>
-                  <circle cx="20" cy="100" r="6" class="map-start"/>
-                  <circle cx="220" cy="20" r="6" class="map-end"/>
-                </svg>
-                <span class="fv-status fv-status--a"><svg class="ic"><use href="#i-route"/></svg>기존 경로</span>
-                <span class="fv-status fv-status--b"><svg class="ic"><use href="#i-refresh"/></svg>재탐색한 경로</span>
-              </div>
-            </div>
-            <h3 class="f-title">상황이 바뀌면 경로 재탐색</h3>
-            <p class="f-desc">버스 지연이나 위치 변화로 기존 경로가 어려워지면 대안을 다시 찾아요.</p>
-          </article>
-
-          <article class="f-card reveal">
-            <div class="f-visual" aria-hidden="true">
-              <div class="fv-why">
-                <p class="fv-why__bubble"><svg class="ic"><use href="#i-spark"/></svg>4분 더 걸리지만 계단 없이 갈 수 있는 경로예요.</p>
-                <ul class="fv-why__list">
-                  <li><svg class="ic"><use href="#i-check"/></svg>402번 버스 지연으로 환승 대기가 길어질 수 있어요</li>
-                  <li><svg class="ic"><use href="#i-check"/></svg>새 경로도 엘리베이터로만 이동해요</li>
-                  <li><svg class="ic"><use href="#i-check"/></svg>환승은 그대로 1회예요</li>
-                </ul>
-              </div>
-            </div>
-            <h3 class="f-title">경로를 바꾼 이유 설명</h3>
-            <p class="f-desc">무엇이 바뀌었고, 왜 이 대안을 추천하는지 짧게 설명해요.</p>
-          </article>
-
-          <article class="f-card reveal">
-            <div class="f-visual" aria-hidden="true">
-              <div class="fv-conf">
-                <div class="fv-conf__head">
-                  <span>예측 신뢰도</span>
-                  <span class="conf conf--mid"><span class="conf-bars"><i></i><i></i><i></i></span>보통</span>
-                </div>
-                <p class="fv-conf__note"><svg class="ic"><use href="#i-info"/></svg>버스 위치 정보가 몇 분 전 기준이에요. 실제 도착은 달라질 수 있어요.</p>
-                <p class="fv-conf__note fv-conf__note--low"><svg class="ic"><use href="#i-alert"/></svg>환승역 엘리베이터 운행 정보가 부족해요. 현장 안내를 함께 확인하세요.</p>
-              </div>
-            </div>
-            <h3 class="f-title">정보가 부족할 땐 신뢰도 안내</h3>
-            <p class="f-desc">데이터가 오래되었거나 부족하면 숨기지 않고 함께 알려줘요.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- 5. 대표 사용 시나리오 -->
-    <section class="section story" id="story" aria-labelledby="story-title" data-route-anchor>
-      <div class="wrap">
-        <header class="section-head reveal">
-          <p class="kicker">대표 사용 시나리오</p>
-          <h2 id="story-title" class="section-title">다리가 불편한 날,<br class="br-md" /> 도서관까지 가는 길.</h2>
-          <p class="section-lead">스크롤하면 이동 상황이 바뀌는 과정을 볼 수 있어요. <span class="inline-demo">시연용 예시</span></p>
-        </header>
-
-        <div class="story-grid" id="story-track">
-          <div class="story-sticky">
-            <div class="phone phone--story" id="story-phone" data-beat="0" aria-hidden="true">
-              <div class="phone__notch"></div>
-              <div class="phone__screen">
-                <div class="ui-status"><span>14:20</span><span class="ui-status__icons"><i></i><i></i><i></i></span></div>
-                <div class="story-eta" id="story-eta" data-tone="neutral">
-                  <svg class="ic"><use href="#i-chat"/></svg><span>출발 전</span>
-                </div>
-                <div class="story-map">
-                  <svg viewBox="0 0 280 360" class="story-map__svg" preserveAspectRatio="xMidYMid meet">
-                    <rect width="280" height="360" fill="#E9EFF6"/>
-                    <path d="M0 250 C80 235 150 270 280 225 L280 262 C150 305 80 275 0 290Z" fill="#CFE6FA"/>
-                    <rect x="180" y="110" width="80" height="54" rx="18" fill="#D7F2E6"/>
-                    <rect x="70" y="20" width="60" height="40" rx="14" fill="#E4E0FB"/>
-                    <path d="M0 80H280M0 160H280M0 200H280M40 0V360M130 0V360M200 0V360M250 0V360" stroke="#fff" stroke-width="8"/>
-                    <!-- 기존 경로 -->
-                    <path id="story-p1" class="sp sp-1" pathLength="1" d="M40 330 L40 232 L40 200 L120 200 Q130 200 130 190 L130 80 L240 50"/>
-                    <path class="sp sp-1-tail" d="M40 232 L40 200 L120 200 Q130 200 130 190 L130 80 L240 50"/>
-                    <!-- 대안 경로 -->
-                    <path class="sp sp-2" pathLength="1" d="M40 232 L40 170 Q40 160 50 160 L190 160 Q200 160 200 150 L200 80 Q200 70 210 66 L240 50"/>
-                    <!-- 지연 버스 -->
-                    <g class="sm-bus" transform="translate(88 200)">
-                      <circle r="15" class="sm-bus__ring"/>
-                      <rect x="-11" y="-11" width="22" height="22" rx="7" class="sm-bus__body"/>
-                      <use href="#i-bus" x="-8" y="-8" width="16" height="16" class="sm-bus__icon"/>
-                    </g>
-                    <g class="sm-badge" transform="translate(88 172)">
-                      <rect x="-44" y="-12" width="88" height="22" rx="11"/>
-                      <text y="3.5" text-anchor="middle">402번 9분 지연</text>
-                    </g>
-                    <!-- 탐색 링 -->
-                    <circle class="sm-scan" cx="40" cy="232" r="20"/>
-                    <!-- 출발·도착 -->
-                    <circle cx="40" cy="330" r="7" class="map-start"/>
-                    <g transform="translate(240 50)"><circle r="9" class="map-end"/></g>
-                    <text x="240" y="30" text-anchor="middle" class="sm-label">도서관</text>
-                    <text x="58" y="335" class="sm-label">집 앞</text>
-                    <!-- 사용자 위치 -->
-                    <g id="story-dot" class="sm-me" transform="translate(40 330)">
-                      <circle r="14" class="sm-me__halo"/>
-                      <circle r="7" class="sm-me__dot"/>
-                    </g>
-                  </svg>
-                </div>
-
-                <div class="story-sheet">
-                  <div class="sheet" data-sheet="0">
-                    <div class="ui-bubble ui-bubble--user">오늘은 천천히 걷고 계단은 피하고 싶어.</div>
-                  </div>
-                  <div class="sheet" data-sheet="1">
-                    <span class="ui-ai-label"><svg class="ic"><use href="#i-spark"/></svg>조건에 맞는 경로예요</span>
-                    <div class="ui-chips"><span class="ui-chip"><svg class="ic"><use href="#i-pace"/></svg>천천히</span><span class="ui-chip"><svg class="ic"><use href="#i-no-stairs"/></svg>계단 제외</span></div>
-                    <p class="sheet-line">402번 버스 → 지하철 (엘리베이터 환승)</p>
-                  </div>
-                  <div class="sheet" data-sheet="2">
-                    <div class="ui-alert"><svg class="ic"><use href="#i-alert"/></svg><span><b>402번 버스 지연 예상</b>기존 환승이 어려워질 수 있어요</span></div>
-                  </div>
-                  <div class="sheet" data-sheet="3">
-                    <div class="ui-keep">
-                      <span class="ui-keep__label"><svg class="ic"><use href="#i-shield"/></svg>처음 조건 그대로</span>
-                      <span class="ui-mini">천천히</span><span class="ui-mini">계단 제외</span>
-                    </div>
-                    <p class="sheet-line"><svg class="ic spin"><use href="#i-refresh"/></svg>조건에 맞는 대안을 찾고 있어요</p>
-                  </div>
-                  <div class="sheet" data-sheet="4">
-                    <p class="ui-why ui-why--lg"><svg class="ic"><use href="#i-spark"/></svg>4분 더 걸리지만 계단 없이 갈 수 있는 경로예요.</p>
-                    <div class="ui-actions"><span class="ui-btn ui-btn--primary">이 경로로 변경</span><span class="ui-btn">기존 유지</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <!-- 도착 -->
+        <div class="ps" data-ps="arrived">
+          <div class="sheet">
+            <p class="arr__ok"><span><svg><use href="#ic-check"/></svg></span>도착했어요</p>
+            <p class="arr__big"><span data-t="39">--:--</span> 도착 · 총 35분</p>
+            <ul class="arr__list">
+              <li>천천히 걷기<b>반영됨</b></li>
+              <li>계단 제외<b>계단 0곳</b></li>
+              <li>환승 1회 이하<b>1회</b></li>
+            </ul>
+            <span class="pbtn pbtn--ghost">이 조건을 자주 쓰는 조건으로 저장</span>
           </div>
-
-          <ol class="story-beats">
-            <li class="beat" data-beat="0">
-              <div class="beat-card">
-                <span class="beat-num">1</span>
-                <h3>“오늘은 천천히 걷고, 계단은 피하고 싶어”</h3>
-                <p>출발 전, 오늘의 몸 상태와 원하는 이동 방식을 그대로 말해요.</p>
-              </div>
-            </li>
-            <li class="beat" data-beat="1">
-              <div class="beat-card">
-                <span class="beat-num">2</span>
-                <h3>조건을 요약하고 경로를 안내해요</h3>
-                <p>천천히 걷는 속도로 시간을 계산하고, 엘리베이터로만 환승하는 경로를 보여줘요. 예상 소요는 31분이에요.</p>
-              </div>
-            </li>
-            <li class="beat" data-beat="2">
-              <div class="beat-card">
-                <span class="beat-num">3</span>
-                <h3>이동 중, 버스 지연 가능성이 생겨요</h3>
-                <p>타려던 402번 버스가 늦어질 것으로 보여 다음 환승이 어려워질 수 있어요.</p>
-              </div>
-            </li>
-            <li class="beat" data-beat="3">
-              <div class="beat-card">
-                <span class="beat-num">4</span>
-                <h3>처음 조건을 유지한 채 다시 찾아요</h3>
-                <p>‘천천히 걷기’와 ‘계단 피하기’는 그대로 두고, 지금 위치에서 갈 수 있는 대안을 탐색해요.</p>
-              </div>
-            </li>
-            <li class="beat" data-beat="4">
-              <div class="beat-card">
-                <span class="beat-num">5</span>
-                <h3>바뀐 이유를 함께 설명해요</h3>
-                <p>“4분 더 걸리지만 계단 없이 갈 수 있는 경로예요.” 예상 소요가 31분에서 35분으로 바뀐 이유를 보여주고, 변경 여부는 사용자가 선택해요.</p>
-              </div>
-            </li>
-          </ol>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <main id="main" class="story">
+    <section class="ch ch--intro" id="s-intro" data-a="0" data-b="0.08" aria-labelledby="t-intro">
+      <p class="eyebrow">맞춤형 AI 안내앱 · DUX</p>
+      <h1 id="t-intro" class="title"><span>오늘의 나에게</span><span>맞는 길.</span></h1>
+      <p class="lead">오늘 어떻게 가고 싶은지 말만 하면, 그 조건에 맞는 길을 찾아 줘요.<br />가는 도중에 상황이 바뀌어도 같은 조건으로 다시 안내해요.</p>
+      <p class="cue"><i></i>스크롤하거나 스페이스바를 눌러 한 단계씩 따라가 보세요</p>
+    </section>
+
+    <section class="ch ch--speak" id="s-speak" data-a="0.08" data-b="0.22" aria-labelledby="t-speak">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 1</span>말로 조건 설정</p>
+        <h2 id="t-speak" class="h2">원하는 이동 방식을<br />말로 설정해요.</h2>
+        <p class="body">“오늘은 천천히 걸을래”, “계단은 피하고 싶어”처럼 평소 말투로 말하면 돼요. DUX가 걷는 속도, 계단 여부, 환승 횟수 같은 길찾기 조건으로 바꿔서 기억해요.</p>
       </div>
     </section>
 
-    <!-- 6. 신뢰와 투명성 -->
-    <section class="section trust" id="trust" aria-labelledby="trust-title" data-route-anchor>
-      <div class="wrap">
-        <header class="section-head reveal">
-          <p class="kicker">신뢰와 투명성</p>
-          <h2 id="trust-title" class="section-title">AI는 말을 이해하고,<br class="br-md" /> 길은 데이터로 계산해요.</h2>
-          <p class="section-lead">AI가 도착 시간을 지어내지 않도록 역할을 나눴어요.</p>
-        </header>
+    <section class="ch ch--match" id="s-match" data-a="0.22" data-b="0.33" aria-labelledby="t-match">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 2</span>조건 맞춤 경로 탐색</p>
+        <h2 id="t-match" class="h2">내 조건에 맞는<br />길만 골라 드려요.</h2>
+        <p class="body">걷는 속도에 맞춰 시간을 다시 계산하고, 계단이 있는 환승 경로는 처음부터 빼요. 그래서 27분짜리 최단 경로 대신 계단 없는 31분 경로를 추천하고, 왜 이 길인지도 함께 알려 드려요.</p>
+      </div>
+    </section>
 
-        <ol class="flow reveal">
-          <li class="flow-node">
-            <span class="flow-icon"><svg class="ic" aria-hidden="true"><use href="#i-chat"/></svg></span>
-            <span class="flow-step">사용자</span>
-            <h3>평소처럼 말해요</h3>
-            <p>“천천히, 계단 없이, 환승은 적게”</p>
-          </li>
-          <li class="flow-node flow-node--ai">
-            <span class="flow-icon"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg></span>
-            <span class="flow-step">AI</span>
-            <h3>경로 조건으로 정리해요</h3>
-            <p>보행 속도 · 계단 제외 · 환승 수 · 허용 시간</p>
-          </li>
-          <li class="flow-node flow-node--engine">
-            <span class="flow-icon"><svg class="ic" aria-hidden="true"><use href="#i-data"/></svg></span>
-            <span class="flow-step">경로 탐색기</span>
-            <h3>데이터로 계산해요</h3>
-            <p>지도·교통 데이터로 실제 경로와 예상 시간을 계산</p>
-          </li>
-          <li class="flow-node flow-node--ai">
-            <span class="flow-icon"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg></span>
-            <span class="flow-step">AI</span>
-            <h3>이유를 설명해요</h3>
-            <p>왜 이 경로인지, 무엇이 바뀌었는지</p>
-          </li>
+    <section class="ch ch--ride" id="s-ride" data-a="0.33" data-b="0.5" aria-labelledby="t-ride">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 3</span>도보·버스·지하철 통합 안내</p>
+        <h2 id="t-ride" class="h2">걷는 동안에는<br />다음에 할 일을 알려 드려요.</h2>
+        <p class="body">어디서 꺾을지, 어느 횡단보도를 건널지, 정류장까지 몇 m 남았는지 걸음에 맞춰 보여 줘요. 가는 길에 계단이 없는지도 계속 확인해요.</p>
+        <ol class="legs" aria-label="추천 경로 구간">
+          <li style="--k:0"><span>도보</span>4분</li>
+          <li style="--k:1"><span>402번 버스</span>14분</li>
+          <li style="--k:2"><span>2호선</span>9분</li>
+          <li style="--k:3"><span>도보</span>4분</li>
         </ol>
-
-        <div class="trust-grid">
-          <article class="t-card reveal">
-            <h3 class="t-title">예측 신뢰도를 숨기지 않아요</h3>
-            <p class="t-desc">데이터가 부족하거나 늦게 갱신되면 예측이 틀릴 수 있어요. DUX는 그 상태를 함께 보여줘요.</p>
-            <ul class="conf-list">
-              <li>
-                <span class="conf conf--high"><span class="conf-bars"><i></i><i></i><i></i></span><svg class="ic" aria-hidden="true"><use href="#i-check-circle"/></svg>높음</span>
-                <span>교통 정보가 최근에 갱신됐어요.</span>
-              </li>
-              <li>
-                <span class="conf conf--mid"><span class="conf-bars"><i></i><i></i><i></i></span><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>보통</span>
-                <span>정보가 몇 분 전 기준이라 실제와 다를 수 있어요.</span>
-              </li>
-              <li>
-                <span class="conf conf--low"><span class="conf-bars"><i></i><i></i><i></i></span><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>낮음</span>
-                <span>시설·운행 정보가 없거나 오래됐어요. 현장 안내도 확인해 주세요.</span>
-              </li>
-            </ul>
-          </article>
-
-          <article class="t-card t-card--plain reveal">
-            <h3 class="t-title">DUX가 하지 않는 약속</h3>
-            <ul class="promise-list">
-              <li><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span><b>도착 시간을 보장하지 않아요.</b> 표시되는 시간은 데이터에 기반한 예상값이에요.</span></li>
-              <li><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg><span><b>모든 상황을 예측한다고 말하지 않아요.</b> 갑작스러운 변화는 늦게 반영될 수 있어요.</span></li>
-              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span><b>대신 근거를 보여줘요.</b> 조건을 어떻게 이해했는지, 왜 이 경로인지 확인할 수 있어요.</span></li>
-              <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span><b>결정은 사용자가 해요.</b> 대안을 추천해도 기존 경로를 유지할 수 있어요.</span></li>
-            </ul>
-          </article>
-        </div>
-
-        <aside class="demo-disclaimer reveal" aria-label="시연용 데이터 안내">
-          <svg class="ic" aria-hidden="true"><use href="#i-info"/></svg>
-          <p><b>이 웹사이트의 데이터에 대해</b> 페이지에 나오는 앱 화면, 장소, 버스 번호, 지연 정보, 소요 시간은 DUX의 사용 경험을 설명하기 위한 <b>시연용 예시</b>예요. 실제 지도·교통 데이터와 연결되어 있지 않아요.</p>
-        </aside>
       </div>
     </section>
 
-    <!-- 7. 마지막 CTA -->
-    <section class="section cta" id="notify" aria-labelledby="cta-title" data-route-anchor>
-      <div class="wrap">
-        <div class="cta-card reveal">
-          <div class="cta-bg" aria-hidden="true"><span class="blob blob-a"></span><span class="blob blob-c"></span></div>
-          <div class="cta-copy">
-            <p class="kicker kicker--light">DUX 출시 준비 중</p>
-            <h2 id="cta-title" class="cta-title">오늘의 나에게 맞는 길,<br />곧 만나요.</h2>
-            <p class="cta-sub">DUX는 아직 앱스토어에 출시되지 않았어요. 출시 소식이나 체험 참여를 원하시면 알려 주세요.</p>
-          </div>
-
-          <form class="notify-form" id="notify-form" novalidate>
-            <fieldset class="intent">
-              <legend>무엇을 원하시나요?</legend>
-              <label><input type="radio" name="intent" value="launch" checked /><span><svg class="ic" aria-hidden="true"><use href="#i-bell"/></svg>출시 알림</span></label>
-              <label><input type="radio" name="intent" value="beta" /><span><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>체험 참여 신청</span></label>
-            </fieldset>
-            <div class="field">
-              <label for="notify-email">이메일</label>
-              <div class="field-row">
-                <input id="notify-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com" required aria-describedby="notify-status" />
-                <button type="submit" class="btn btn-primary">신청하기</button>
-              </div>
-            </div>
-            <p class="form-status" id="notify-status" role="status" aria-live="polite"></p>
-          </form>
-        </div>
+    <section class="ch ch--delay" id="s-delay" data-a="0.5" data-b="0.6" aria-labelledby="t-delay">
+      <div class="slash">
+        <p class="kick"><span class="n">기능 4</span>실시간 지연 감지</p>
+        <h2 id="t-delay" class="h2">타려던 버스나 지하철이 늦어지면<br />먼저 알려 드려요.</h2>
+        <p class="body">이동하는 동안 내 경로에 있는 버스·지하철 도착 정보를 계속 확인해요. 지금처럼 402번 버스가 9분 늦어져 환승이 어려워지면, 바로 알림을 보내고 다른 길을 찾기 시작해요.</p>
       </div>
+    </section>
+
+    <section class="ch ch--reroute" id="s-reroute" data-a="0.6" data-b="0.735" aria-labelledby="t-reroute">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 5</span>조건 유지 재탐색</p>
+        <h2 id="t-reroute" class="h2">길이 바뀌어도<br />처음 말한 조건은 그대로예요.</h2>
+        <p class="body">다시 찾은 길도 ‘천천히 걷기 · 계단 제외 · 환승 1회 이하’를 그대로 따라요. 더 빨라도 계단이 있는 길은 추천하지 않고, 왜 길이 바뀌었는지 한 줄로 설명해요.</p>
+        <dl class="vs">
+          <div class="vs__row vs__row--no"><dt>가장 빠른 대안</dt><dd>32분 · 계단 2곳</dd></div>
+          <div class="vs__row vs__row--yes"><dt>DUX 추천 대안</dt><dd>35분 · 계단 0곳</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="ch ch--trust" id="s-trust" data-a="0.775" data-b="0.87" aria-labelledby="t-trust">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 6</span>예측 신뢰도 표시</p>
+        <h2 id="t-trust" class="h2">확실하지 않을 때는<br />그렇다고 함께 보여 드려요.</h2>
+        <p class="body">도착 시간은 AI가 짐작하지 않고 지도·교통 데이터로 계산해요. 버스 위치 정보가 늦게 들어오거나 부족하면 ‘예측 신뢰도 보통’처럼 화면에 같이 표시해요.</p>
+      </div>
+    </section>
+
+    <section class="ch ch--arrive" id="s-arrive" data-a="0.87" data-b="0.935" aria-labelledby="t-arrive">
+      <div class="copy">
+        <h2 id="t-arrive" class="title title--sm"><span data-t="39">--:--</span>, 도착.</h2>
+        <p class="lead">처음 말한 조건 세 가지를 끝까지 지켰어요. 계단 0곳, 환승 1회.</p>
+      </div>
+    </section>
+
+    <section class="ch ch--download" id="s-download" data-a="0.935" data-b="1.01" aria-labelledby="t-download">
+      <div class="dl">
+        <div class="dl__copy">
+          <p class="kick kick--light"><img class="dl__icon" src="assets/dux-icon-64.png" width="36" height="36" alt="" />DUX · Android 앱</p>
+          <h2 id="t-download" class="h2">나에게 맞는 길,<br />지금 탐색해 보세요.</h2>
+          <p class="body">휴대폰 카메라로 QR을 찍거나, 휴대폰에서 아래 버튼을 눌러 DUX 앱을 설치하세요.</p>
+          <!-- 교체 지점: 실제 APK 파일 경로 -->
+          <a class="dl__btn" id="apk-link" href="downloads/dux.apk" download>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/></svg>
+            앱 받기
+          </a>
+          <p class="dl__note" id="apk-note" role="status" aria-live="polite">Android 전용 설치 파일(APK)입니다. 설치할 때 ‘알 수 없는 앱 설치’를 허용해 주세요.</p>
+        </div>
+        <figure class="dl__qr">
+          <!-- 교체 지점: 실제 다운로드 QR 이미지 -->
+          <img src="assets/qr-placeholder.svg" width="220" height="220" alt="DUX 앱 다운로드 QR 코드" />
+          <figcaption>카메라로 스캔</figcaption>
+        </figure>
+      </div>
+      <p class="fine">© 2026 Innovation<span class="osm-credit"> · 지도 데이터 © OpenStreetMap 기여자</span></p>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="wrap footer-inner">
-      <div class="footer-brand">
-        <span class="footer-word">DUX</span>
-        <p>내 상황을 말하면, 그 조건에 맞는 길을 찾고 바뀐 상황에도 다시 안내하는 맞춤형 이동 앱 DUX(덕스).</p>
-      </div>
-      <nav class="footer-links" aria-label="푸터 메뉴">
-        <a href="#how">프로젝트 소개</a>
-        <a href="#notify">출시 알림 · 체험 신청</a>
-        <a href="#trust">데이터와 신뢰</a>
-        <span data-contact class="contact-slot">문의 채널 준비 중</span>
-      </nav>
-      <div class="footer-meta">
-        <span class="status-pill status-pill--dark"><span class="status-dot" aria-hidden="true"></span>출시 준비 중 · 앱 다운로드 미제공</span>
-        <p>사이트의 앱 화면과 교통 정보는 시연용 예시입니다. © <span id="year">2026</span> DUX 프로젝트</p>
-      </div>
-    </div>
-  </footer>
+  <div class="track" aria-hidden="true">
+    <span class="anchor" id="c-intro" style="--p:0"></span>
+    <span class="anchor" id="c-speak" style="--p:0.16"></span>
+    <span class="anchor" id="c-match" style="--p:0.3"></span>
+    <span class="anchor" id="c-ride" style="--p:0.44"></span>
+    <span class="anchor" id="c-delay" style="--p:0.56"></span>
+    <span class="anchor" id="c-reroute" style="--p:0.68"></span>
+    <span class="anchor" id="c-trust" style="--p:0.83"></span>
+    <span class="anchor" id="c-download" style="--p:1"></span>
+  </div>
 
-  <script src="data.js"></script>
-  <script src="hero-scene.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="v4.js?v=20261024c"></script>
 </body>
 </html>

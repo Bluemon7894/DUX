@@ -1,5 +1,5 @@
 """개발용 정적 서버: 프로젝트 폴더를 캐시 없이 제공합니다.
-사용: python v4/tools/serve.py [포트]   (기본 5173, 프로젝트 루트에서 실행)
+사용: python tools/serve.py [포트]   (기본 5173, 프로젝트 루트에서 실행)
 """
 import http.server
 import sys
