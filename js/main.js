@@ -4,7 +4,7 @@
  * 스크롤 진행률 p(0~1)에 따라
  *  - 카메라(눈높이 1.6m)가 집 앞 골목 → 이면도로 → 횡단보도 → 버스정류장 → 지하철 엘리베이터 → (지하철) → 400번 버스 안 → 도착지로 이동하고
  *  - 바닥의 금색 경로선, 버스정보안내기, 손에 든 휴대폰의 DUX 화면과 지도가 함께 바뀝니다.
- * 하늘·조명은 기본이 밤이고, 머리말의 낮·밤 버튼으로 바꿉니다. 점검용: ?t=18.5 처럼 시각을, ?dev&p=0.45 처럼 진행률을 지정.
+ * 하늘·조명은 항상 밤(9시 출발)입니다. 점검용: ?dev&p=0.45 처럼 진행률을 지정.
  * 거리 데이터는 <meta name="dux-city-data"> 에 경로가 있으면 그 파일(OpenStreetMap 변환본)을, 없으면 js/scene/city-gen.js 의 생성 동네를 씁니다.
  */
 import { WebGLRenderer, Scene, PerspectiveCamera, FogExp2, HemisphereLight, DirectionalLight, Vector3, Color } from "../vendor/three.min.js";
@@ -31,14 +31,10 @@ const FONT = '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun 
 const DEG = Math.PI / 180;
 
 /* ==========================================================================
-   시각: 기본은 밤 9시 출발, 낮으로 바꾸면 오후 2시 30분 출발
+   시각: 항상 밤 9시 출발 (날짜는 오늘)
    ========================================================================== */
 const NOW = new Date();
-const qt = parseFloat(qs.get("t"));
-const SKY_MIN = { night: 21 * 60, day: 14.5 * 60 };
-let skyMode = Number.isFinite(qt) && qt >= 6.5 && qt < 18.3 ? "day" : "night";
-let START_MIN = Number.isFinite(qt) ? qt * 60 : SKY_MIN[skyMode];
-let skyMin = START_MIN; // 하늘에 쓰는 시각. 버튼을 누르면 새 출발 시각으로 빨리 감듯 넘어감
+const START_MIN = 21 * 60;
 function fmt(min, pad = true) {
   const m = ((Math.floor(min) % 1440) + 1440) % 1440;
   const h = Math.floor(m / 60), mm = m % 60;
@@ -46,7 +42,7 @@ function fmt(min, pad = true) {
 }
 // 이동 경과 시간(분): 출발 → 정류장 4분 → 지연 → 지하철 → 400번 버스 → 35분 뒤 도착 (+출발 전 4분)
 function tripMin(p) {
-  let m = 4 * smooth(0.33, 0.46, p);
+  let m = 4 * w1Frac(p);
   if (p > 0.62) m = 4 + 4 * smooth(0.62, 0.705, p);
   if (p > 0.735) m = 8 + 12 * smooth(0.741, 0.756, p);
   if (p > 0.756) m = 20 + 11 * smooth(0.772, 0.803, p);
@@ -139,6 +135,17 @@ function walk(path, d) {
   return { x: p[0], z: p[1], yaw: Number.isFinite(yaw) ? yaw : 0 };
 }
 
+// 정류장까지 걷기: 골목 끝(꺾는 곳)과 횡단보도 앞에서 잠깐 섬 → 스페이스 한 번에 한 구간씩
+const W1_KEYS = [[0.33, 0], [0.384, 1], [0.39, 1], [0.425, 3], [0.431, 3], [0.468, 5]]; // [진행률, w1 꼭짓점 번호]
+function w1Frac(p) {
+  const f = (k) => (navInfo ? navInfo.cum[Math.min(k, navInfo.cum.length - 1)] / navInfo.total : k / 5);
+  for (let i = 1; i < W1_KEYS.length; i++) {
+    const [p0, k0] = W1_KEYS[i - 1], [p1, k1] = W1_KEYS[i];
+    if (p < p1) return lerp(f(k0), f(k1), smooth(p0, p1, p));
+  }
+  return 1;
+}
+
 // 지하철에서 올라와 400번 버스를 타고, 도서관 입구에서 가운데 문으로 내린 뒤 버스가 떠남 (진행률)
 // 문이 다 닫힌 뒤(0.768) 출발하고, 다 선 뒤(0.803) 문이 열리고, 문이 다 열린 뒤(0.81) 내림
 const BUS = { show: 0.752, close: 0.76, go: 0.772, stop: 0.803, alight: 0.81, out: 0.825, leave: 0.83 };
@@ -171,7 +178,7 @@ function setupAlight(w3Start) {
   paths.rideYaw = yaw;
 }
 
-const STILLS = [0.02, 0.185, 0.3, 0.465, 0.58, 0.71, 0.84, 0.94, 1];
+const STILLS = [0.02, 0.185, 0.3, 0.472, 0.58, 0.71, 0.84, 0.94, 1];
 const cam = { x: 0, z: 0, yaw: 0, d1: 0, d3: 0 };
 function cameraState(p) {
   const { w1, w2, w3 } = paths;
@@ -183,7 +190,7 @@ function cameraState(p) {
     s.yaw += Math.sin(p * 9) * 0.04;
     pitch = lerp(64, 1.5, smooth(0.05, 0.17, p)) * DEG;
   } else if (p < 0.5) {
-    const d = smooth(0.33, 0.46, p) * w1.length;
+    const d = w1Frac(p) * w1.length;
     s = walk(w1, d); bob = d; cam.d1 = d;
   } else if (p < 0.62) {
     s = walk(w1, w1.length); cam.d1 = w1.length;
@@ -317,7 +324,8 @@ const tripClocks = $$('[data-clock="trip"]');
 let introIn = reduceMotion ? 1 : 0;
 
 const HUD = [
-  [0.08, "출발 전"], [0.22, "조건 말하는 중"], [0.33, "경로 고르는 중"], [0.46, "정류장으로 걷는 중"], [0.5, "정류장 도착"],
+  [0.08, "출발 전"], [0.22, "조건 말하는 중"], [0.33, "경로 고르는 중"], [0.425, "정류장으로 걷는 중"],
+  [0.431, "횡단보도 신호 기다리는 중"], [0.468, "정류장으로 걷는 중"], [0.5, "정류장 도착"],
   [0.6, "버스 지연 감지"], [0.705, "대안 경로로 이동"], [0.735, "지하철 엘리베이터 앞"], [0.762, "지하철 2정거장 이동 중"],
   [0.825, "400번 버스 타고 가는 중"], [0.915, "도서관으로 걷는 중"], [0.955, "도착"], [1.1, ""]
 ];
@@ -458,8 +466,8 @@ function updateChapters(p) {
    스페이스바: 다음 단계로 천천히 이동 (Shift+스페이스는 이전 단계)
    ========================================================================== */
 // 멈춤 지점은 모두 그 단계의 동작이 끝난 뒤: 글자 입력 완료 · 걷기 끝 · 경로선 다 그림 · 문 다 닫힘/열림 · 장 글이 다 보임
-//  첫 화면 · 말로 조건 설정 · 맞춤 경로 · 정류장 도착 · 지연 알림 · 엘리베이터 앞 · 버스 탑승 · 하차 정류장 · 내린 자리 · 도착 · 앱 받기
-const STOPS = [0, 0.185, 0.3, 0.465, 0.58, 0.71, 0.77, 0.808, 0.84, 0.94, 1];
+//  첫 화면 · 말로 조건 설정 · 맞춤 경로 · 골목 끝 · 횡단보도 앞 · 정류장 도착 · 지연 알림 · 엘리베이터 앞 · 버스 탑승 · 하차 정류장 · 내린 자리 · 도착 · 앱 받기
+const STOPS = [0, 0.185, 0.3, 0.387, 0.428, 0.472, 0.58, 0.71, 0.77, 0.808, 0.84, 0.94, 1];
 let stepAnim = null;
 const easeInOut = (t) => 0.5 - Math.cos(Math.PI * t) / 2;
 function stepTo(dir) {
@@ -469,7 +477,7 @@ function stepTo(dir) {
   const next = dir > 0 ? STOPS.find((s) => s > base + 0.004) : [...STOPS].reverse().find((s) => s < base - 0.004);
   if (next === undefined) return;
   const from = window.scrollY / max;
-  const dur = reduceMotion ? 0 : Math.min(5200, 2800 + Math.abs(next - from) * 14000);
+  const dur = reduceMotion ? 0 : Math.min(6000, 3400 + Math.abs(next - from) * 16000);
   stepAnim = { from, to: next, t0: performance.now(), dur };
   const tick = (now) => {
     if (!stepAnim) return;
@@ -548,9 +556,7 @@ function frame(now) {
   if (introIn < 1) introIn = Math.min(1, introIn + dt / 1.8);
   current = reduceMotion ? target : current + (target - current) * (1 - Math.pow(0.045, dt));
   if (Math.abs(target - current) < 0.00004) current = target;
-  skyMin = reduceMotion ? START_MIN : skyMin + (START_MIN - skyMin) * (1 - Math.pow(0.06, dt));
-  if (Math.abs(START_MIN - skyMin) < 0.5) skyMin = START_MIN;
-  skyAt((skyMin + tripMin(current)) / 60, tod);
+  skyAt((START_MIN + tripMin(current)) / 60, tod);
   const cp = cameraP(current);
   if (renderer && world) {
     placeCamera(cp, dt);
@@ -644,27 +650,6 @@ function setupMusic() {
   play();
 }
 
-/* ==========================================================================
-   낮 · 밤 버튼 (기본 밤)
-   ========================================================================== */
-function setupSkyToggle() {
-  const btn = $("#tod-btn");
-  if (!btn) return;
-  const render = () => {
-    const night = skyMode === "night";
-    $("use", btn).setAttribute("href", night ? "#ic-moon" : "#ic-sun");
-    $(".snd__txt", btn).textContent = night ? "밤" : "낮";
-    btn.setAttribute("aria-label", night ? "지금 밤 · 낮으로 바꾸기" : "지금 낮 · 밤으로 바꾸기");
-  };
-  btn.addEventListener("click", () => {
-    skyMode = skyMode === "night" ? "day" : "night";
-    START_MIN = SKY_MIN[skyMode];
-    fillTimes();
-    render();
-  });
-  render();
-}
-
 document.addEventListener("focusin", (e) => {
   const ch = e.target.closest && e.target.closest(".ch");
   if (!ch || ch.classList.contains("is-on")) return;
@@ -703,7 +688,6 @@ async function init() {
   fillTimes();
   setupDownload();
   setupMusic();
-  setupSkyToggle();
   readScroll();
   current = target;
   resize();

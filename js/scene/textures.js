@@ -296,6 +296,19 @@ export function busScreenCanvas(fontFamily, stopName) {
   return { texture: t, draw };
 }
 
+/* ---------- 주차금지 표지판 (둥근 판, 바깥은 투명) ---------- */
+export function noParkingTexture(fontFamily) {
+  const [c, g] = canvas(256, 256);
+  g.clearRect(0, 0, 256, 256);
+  g.fillStyle = "#f7f5ef"; g.beginPath(); g.arc(128, 128, 122, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "#d4161b"; g.lineWidth = 22; g.beginPath(); g.arc(128, 128, 109, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = "#d4161b"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = `900 64px ${fontFamily}`;
+  g.fillText("주차", 128, 98, 170);
+  g.fillText("금지", 128, 164, 170);
+  return tex(c, false);
+}
+
 /* ---------- 작은 안내판 (엘리베이터, 지하철 등) ---------- */
 export function labelTexture(text, bg, fg, fontFamily, w = 512, h = 128) {
   const [c, g] = canvas(w, h);
