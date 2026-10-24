@@ -43,6 +43,7 @@ export function generateCity() {
   const northLines = [-64, -116, -170, -226, -280, -336, -392, -450, -508].map(mkLine);
   const southLines = [64, 118, 172, 228, 286, 342, 398, 456].map(mkLine);
   northLines[1].slope = 0.004; // 집 앞 골목은 거의 곧게
+  northLines[1].w = 6.4;       // 길가에 차를 세워도 가운데로 걸어갈 수 있는 폭
   northLines.forEach((L) => city.roads.push({ k: "alley", w: L.w, sw: 0, pts: [X0, zAt(L, X0), X1 - 2, zAt(L, X1 - 2)] }));
   southLines.forEach((L) => city.roads.push({ k: "alley", w: L.w, sw: 0, pts: [X0, zAt(L, X0), 314, zAt(L, 314)] }));
 
@@ -167,12 +168,12 @@ export function generateCity() {
     // 처음 추천: 도보 → 402번 버스 → 2호선 환승 → 도보
     busA: [-62, 7.4, 120, 7.4, 300, 7.4],
     sub2: [300, 4, 556, 4],
-    wEnd: [556, 12.9, 584, 13.0, 593, 10.9, 595, 8.4],
+    wEnd: [556, 12.9, 596, 12.6],
     w2: [-79, SW_S, -66, 13.3, 36, 13.3],
     elevator: [44, 12.2],
     subAlt: [44, 12.2, 58, 4, 300, 4],          // 대안: 지하철 2정거장 (휴대폰 지도 표시용)
     busAlt: [300, 7.4, 428, 7.4, 432, 13],      // 대안: 400번 버스
-    w3: [432, 13.0, 584, 13.0, 593, 10.9, 595, 8.4],
+    w3: [432, 13.0, 584, 13.0, 596, 12.6],      // 도서관 앞 횡단보도 옆 보도에서 끝 (차도로 내려서지 않음)
     dest: [612, 14]
   };
   city.route = route;

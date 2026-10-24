@@ -299,7 +299,7 @@ function updateWorld(p, cp, time, dt) {
   rb.w1.mat.opacity = 1 - smooth(0.72, 0.74, p);
   const delayed = p > 0.535;
   if (delayed !== bisDelayed) { bisDelayed = delayed; world.setBis(delayed); }
-  world.update(reduceMotion ? 0 : time, reduceMotion ? 0 : dt, tod);
+  world.update(reduceMotion ? 0 : time, reduceMotion ? 0 : dt, tod, camera.position);
   busDepart = cp > BUS.leave ? busDepart + dt : 0;
   world.bus.update(busState(cp), reduceMotion ? 0 : time, dt, tod);
 }

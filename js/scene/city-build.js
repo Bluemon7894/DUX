@@ -249,42 +249,6 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
   };
   const vsignCell = (idx) => [(idx * 128) / 1024 + 0.003, 0.004, ((idx + 1) * 128) / 1024 - 0.003, 0.5 - 0.004];
 
-  /* 필로티 빌라: 1층을 비우고 기둥 사이에 차를 세로로(앞머리를 건물 쪽으로) 댐. 집 앞 골목은 대부분 이 모양 */
-  const rp = rng(4242); // 다른 건물의 무작위 배치가 바뀌지 않도록 따로 씀
-  const PIL = 2.7, PIL_D = 6.0;
-  const homeLine = city.route && city.route.w1 ? toPts(city.route.w1.slice(0, 4)) : null;
-  const pilAcc = new Acc(), pilCols = [], pilotiCars = [], pilotiLights = [], pilotiPools = [], noParking = [], cones = [];
-  const CONC = new Color("#56534d"), CEIL = new Color("#79756c"), SLAB = new Color("#3c3a37");
-  const UV4 = [[0, 0], [1, 0], [1, 1], [0, 1]];
-  function addPiloti(x1, z1, x2, z2, nx, nz, L) {
-    const tx = (x2 - x1) / L, tz = (z2 - z1) / L;
-    const ax = x1 - nx * PIL_D, az = z1 - nz * PIL_D, bx = x2 - nx * PIL_D, bz = z2 - nz * PIL_D;
-    pilAcc.quad([x1, PIL, z1], [ax, PIL, az], [bx, PIL, bz], [x2, PIL, z2], [0, -1, 0], UV4, CEIL);            // 천장
-    pilAcc.quad([ax, 0, az], [bx, 0, bz], [bx, PIL, bz], [ax, PIL, az], [nx, 0, nz], UV4, CONC);               // 안쪽 벽
-    pilAcc.quad([x1, 0, z1], [x1, PIL, z1], [ax, PIL, az], [ax, 0, az], [tx, 0, tz], UV4, CONC);               // 옆벽
-    pilAcc.quad([x2, 0, z2], [bx, 0, bz], [bx, PIL, bz], [x2, PIL, z2], [-tx, 0, -tz], UV4, CONC);
-    pilAcc.quad([x1, 0.03, z1], [x2, 0.03, z2], [bx, 0.03, bz], [ax, 0.03, az], [0, 1, 0], UV4, SLAB);        // 바닥
-    pilAcc.quad([x1 + nx * 0.02, PIL, z1 + nz * 0.02], [x2 + nx * 0.02, PIL, z2 + nz * 0.02], [x2 + nx * 0.02, PIL + 0.25, z2 + nz * 0.02], [x1 + nx * 0.02, PIL + 0.25, z1 + nz * 0.02], [nx, 0, nz], UV4, SLAB); // 보 앞면
-    const slots = Math.max(1, Math.floor((L - 0.6) / 2.6)), sw = (L - 0.6) / slots;
-    for (let k = 0; k <= slots; k++) {
-      const t = 0.3 + k * sw;
-      pilCols.push([x1 + tx * t - nx * 0.3, PIL / 2, z1 + tz * t - nz * 0.3, 0.34, PIL, 0.34]);
-    }
-    for (let k = 0; k < slots; k++) {
-      const t = 0.3 + (k + 0.5) * sw, px = x1 + tx * t, pz = z1 + tz * t;
-      if (rp() < 0.8) pilotiCars.push([px - nx * 2.75, pz - nz * 2.75, Math.atan2(-nx, -nz) + (rp() < 0.3 ? Math.PI : 0), rp() * 0.94]);
-      else {
-        // 빈 칸 앞: 주차금지 표지판이나 고깔
-        const face = Math.atan2(nx - 0.8, nz); // 골목 들머리(서쪽)에서 걸어오는 쪽으로 살짝 돌려 세움
-        if (rp() < 0.65) noParking.push([px + nx * 0.55, pz + nz * 0.55, face]);
-        else { cones.push([px + nx * 0.5 - tx * 0.5, pz + nz * 0.5 - tz * 0.5]); cones.push([px + nx * 0.5 + tx * 0.5, pz + nz * 0.5 + tz * 0.5]); }
-      }
-      if (k % 2 === 0) { pilotiLights.push(px - nx * 3, PIL - 0.12, pz - nz * 3); pilotiPools.push([px - nx * 3, pz - nz * 3, 5]); }
-    }
-    // 차가 있는 칸 사이 기둥 앞에도 가끔 주차금지 (남의 차 못 대게)
-    if (rp() < 0.5) noParking.push([x1 + tx * 0.3 + nx * 0.5, z1 + tz * 0.3 + nz * 0.5, Math.atan2(nx - 0.8, nz)]);
-  }
-
   city.buildings.forEach((b, bi) => {
     let pts = toPts(b.pts);
     const kind = b.k === "civic" ? "com" : b.k;
@@ -297,26 +261,18 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     const h = b.h;
     const floorH = kind === "apt" ? 2.8 : kind === "com" ? 3.4 : 2.9;
     const uOff = Math.floor(R(0, ATLAS)), vOff = Math.floor(R(0, ATLAS));
-    let piloti = false;
-    if (kind === "res" && !b.shop && front !== undefined && b.floors >= 3) {
-      const [fx1, fz1] = pts[front], [fx2, fz2] = pts[(front + 1) % pts.length];
-      const nearHome = homeLine && nearLines([homeLine], (fx1 + fx2) / 2, (fz1 + fz2) / 2, 7);
-      piloti = Math.hypot(fx2 - fx1, fz2 - fz1) > 5.8 && rp() < (nearHome ? 0.85 : 0.12);
-    }
     let per = 0;
     for (let i = 0; i < pts.length; i++) {
       const [x1, z1] = pts[i], [x2, z2] = pts[(i + 1) % pts.length];
       const L = Math.hypot(x2 - x1, z2 - z1);
       if (L < 0.05) continue;
       const nx = -(z2 - z1) / L, nz = (x2 - x1) / L; // 바깥 법선 (꼭짓점을 시계 방향으로 맞춘 뒤의 왼쪽 법선)
-      const isFront = i === front;
-      const y0 = piloti && isFront ? PIL : 0; // 필로티 정면은 2층부터 벽
       const u0 = (per / BAY + uOff) / ATLAS, u1 = ((per + L) / BAY + uOff) / ATLAS;
-      const v0 = (y0 / floorH + vOff) / ATLAS, v1 = (h / floorH + vOff) / ATLAS;
-      accW.quad([x1, y0, z1], [x2, y0, z2], [x2, h, z2], [x1, h, z1], [nx, 0, nz], [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], tint);
+      const v0 = vOff / ATLAS, v1 = (h / floorH + vOff) / ATLAS;
+      accW.quad([x1, 0, z1], [x2, 0, z2], [x2, h, z2], [x1, h, z1], [nx, 0, nz], [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], tint);
       per += L;
-      if (piloti && isFront) addPiloti(x1, z1, x2, z2, nx, nz, L);
 
+      const isFront = i === front;
       // 1층 상가 + 간판
       if (isFront && b.shop) {
         const gh = kind === "com" ? 4.2 : 3.0;
@@ -400,9 +356,6 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
   if (signAcc.count) scene.add(new Mesh(signAcc.build(), signMat));
   const darkMat = new MeshLambertMaterial({ color: "#26241f", side: DoubleSide });
   if (darkAcc.count) scene.add(new Mesh(darkAcc.build(), darkMat));
-  // 필로티 안쪽 · 기둥: 밤에 형광등이 켜진 주차 공간처럼 보이도록 조명과 상관없는 색
-  if (pilAcc.count) scene.add(new Mesh(pilAcc.build(), new MeshBasicMaterial({ vertexColors: true, side: DoubleSide })));
-  if (pilCols.length) scene.add(new Mesh(mergeBoxes(pilCols), new MeshLambertMaterial({ color: "#8a867e", emissive: "#2c2a27" })));
 
   /* ---------- 인스턴스 소품 ---------- */
   const dummy = new Object3D();
@@ -461,7 +414,9 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
   instanced(lampGeo, new MeshLambertMaterial({ color: "#3a3c3d" }), lamps, (d, s) => { d.position.set(s[0], 0, s[1]); d.rotation.set(0, s[2], 0); d.scale.set(1, 1, 1); });
 
   /* 골목: 전신주 + 전선, 주차 차량 */
-  const poles = [], wires = [], secLights = [], parked = [];
+  const poles = [], wires = [], secLights = [], parked = [], noParking = [], cones = [];
+  const rp = rng(4242); // 골목 소품 전용 (다른 배치의 무작위 순서를 바꾸지 않도록)
+  const homeLine = city.route && city.route.w1 ? toPts(city.route.w1.slice(0, 4)) : null; // 집 앞 골목 (걷기 첫 구간)
   city.roads.forEach((rd) => {
     if (rd.k === "main") return;
     const pts = toPts(rd.pts);
@@ -485,13 +440,19 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
       prev = [x, z, nx, nz];
     });
     if (rd.k === "alley") {
-      const pSide = -side, pOff = rd.w / 2 - 1.05;
+      // 골목 양쪽 가장자리에 차를 길 방향(세로)으로 종종 세워 둠. 전봇대 바로 옆은 비우고,
+      // 빈 자리에는 가끔 주차금지 표지판이나 고깔 (걷는 길과 겹치는 차는 아래에서 빠짐)
+      const pOff = rd.w / 2 - 1.0, eOff = rd.w / 2 - 0.35;
       along(pts, R(3, 8), () => R(5.6, 7.5), (cx, cz, dx, dz, nx, nz) => {
-        if (r() > 0.55) return;
-        const x = cx + nx * pOff * pSide, z = cz + nz * pOff * pSide;
+        const home = homeLine && nearLines([homeLine], cx, cz, 4); // 첫 장면에 오래 보이는 집 앞 골목은 조금 더 빽빽하게
+        const s = rp() < 0.6 ? -side : side;
+        const x = cx + nx * pOff * s, z = cz + nz * pOff * s;
         if (nearMain(x, z, 17)) return;
-        if (homeLine && nearLines([homeLine], x, z, 5)) return; // 집 앞 골목은 필로티 주차라 길가에 세우지 않음
-        parked.push([x, z, Math.atan2(dx, dz) + (r() < 0.5 ? 0 : Math.PI), r()]);
+        const byPole = poles.some((q) => Math.hypot(q[0] - x, q[1] - z) < 3.2);
+        if (r() < (home ? 0.7 : 0.55) && !byPole) { parked.push([x, z, Math.atan2(dx, dz) + (r() < 0.5 ? 0 : Math.PI), r()]); return; }
+        const ex = cx + nx * eOff * s, ez = cz + nz * eOff * s, q = rp();
+        if (q < (home ? 0.45 : 0.16)) noParking.push([ex, ez, Math.atan2(-nx * s - 0.8, -nz * s)]); // 골목 안쪽, 서쪽에서 오는 쪽을 보게
+        else if (q < (home ? 0.75 : 0.26)) { cones.push([ex - dx * 0.6, ez - dz * 0.6]); cones.push([ex + dx * 0.6, ez + dz * 0.6]); }
       });
     }
   });
@@ -518,15 +479,13 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     scene.add(new LineSegments(g, new LineBasicMaterial({ color: "#0d0c0b" })));
   }
   // 주차 차량 (골목마다 세단·SUV·경차·1톤 트럭이 섞여 있음)
-  parked.push(...pilotiCars);
-  pilotiPools.forEach((p) => pools.push(p));
-  secLights.push(...pilotiLights);
-  // 걷는 경로를 가로막는 차는 빼냄: 차체(길이 4.6m · 폭 1.9m)가 경로 중심선에서 0.55m 안으로 들어오면 제외
+  // 걷는 경로를 가로막는 차는 빼냄: 차체(길이 4.6m · 폭 1.9m)가 경로 중심선에서 0.6m 안으로 들어오면 제외
   const walkLines = ["w1", "w2", "w3"].filter((k) => city.route && city.route[k]).map((k) => toPts(city.route[k]));
   const blocksWalk = ([x, z, ang]) => {
+    // 차체 위를 0.5m 간격 격자로 훑어서, 경로가 격자 사이로 빠져나가지 않게
     const fx = Math.sin(ang), fz = Math.cos(ang);
-    for (const t of [-2.3, -1.15, 0, 1.15, 2.3]) for (const w of [-0.95, 0, 0.95]) {
-      if (nearLines(walkLines, x + fx * t + fz * w, z + fz * t - fx * w, 0.55)) return true;
+    for (let t = -2.3; t <= 2.31; t += 0.46) for (const w of [-0.95, -0.32, 0.32, 0.95]) {
+      if (nearLines(walkLines, x + fx * t + fz * w, z + fz * t - fx * w, 0.6)) return true;
     }
     return false;
   };
@@ -537,7 +496,7 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     return { type, x: s[0], z: s[1], ang: s[2], color: bodyColor(type, (s[3] * 7.31) % 1) };
   }), patchFog) : null;
 
-  // 주차금지 표지판 (고무 받침 + 기둥 + 둥근 판) · 고깔: 빌라 주차 칸 앞에 세워 둔 것
+  // 주차금지 표지판 (고무 받침 + 기둥 + 둥근 판) · 고깔: 집 앞 골목 가장자리에 세워 둔 것
   const C = (hex) => new Color(hex);
   const standGeo = mergeColored([
     [new CylinderGeometry(0.2, 0.25, 0.08, 14).translate(0, 0.04, 0), C("#1d1d1f")],
@@ -676,8 +635,9 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
 
   /* ---------- 시간대별 갱신 ---------- */
   const carDummy = new Object3D();
-  out.update = (time, dt, tod) => {
+  out.update = (time, dt, tod, walker) => {
     // tod: { night: 0~1 } — 밤일수록 창문·간판·가로등이 밝음
+    // walker: 걷는 사람(카메라) 위치. 차로 위에 서 있으면 차가 그 앞에서 멈춤
     const n = tod.night;
     lit.forEach((L) => { L.mat.emissiveIntensity = L.dawn + (L.night - L.dawn) * n; });
     lampMat.opacity = Math.min(1, 0.05 + n * 1.1);
@@ -686,12 +646,22 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     headMat.opacity = 0.3 + n * 0.7;
     tailMat.opacity = 0.35 + n * 0.65;
     elGlass.material.emissiveIntensity = 0.1 + n * 0.5;
-    movers.forEach((m, i) => {
-      m.s = (m.s + m.dir * m.v * dt + lane.length) % lane.length;
-      const [cx, cz, dx, dz] = laneAt(m.s);
+    const place = (m, s) => {
+      const [cx, cz, dx, dz] = laneAt(s);
       const nx = -dz * m.dir, nz = dx * m.dir; // 진행 방향의 오른쪽
-      const fx = dx * m.dir, fz = dz * m.dir;
-      const x = cx + nx * m.off, z = cz + nz * m.off;
+      return { nx, nz, fx: dx * m.dir, fz: dz * m.dir, x: cx + nx * m.off, z: cz + nz * m.off };
+    };
+    movers.forEach((m, i) => {
+      const s = (m.s + m.dir * m.v * dt + lane.length) % lane.length;
+      let P = place(m, s);
+      if (walker) {
+        // 차 앞쪽 8m 안, 같은 차로 폭 안에 사람이 있으면 그 자리에 섬
+        const ax = walker.x - P.x, az = walker.z - P.z;
+        const ahead = ax * P.fx + az * P.fz, beside = Math.abs(ax * P.nx + az * P.nz);
+        if (ahead > 0 && ahead < moveFleet.half(i) + 8 && beside < 2.4) P = place(m, m.s);
+        else m.s = s;
+      } else m.s = s;
+      const { nx, nz, fx, fz, x, z } = P;
       moveFleet.set(i, x, z, Math.atan2(fx, fz));
       const hf = moveFleet.half(i), hw = m.type === "bus" ? 0.95 : 0.62;
       headPos.set([x + fx * hf - nx * hw, 0.75, z + fz * hf - nz * hw, x + fx * hf + nx * hw, 0.75, z + fz * hf + nz * hw], i * 6);
