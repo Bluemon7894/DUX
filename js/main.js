@@ -578,8 +578,10 @@ function stop() { running = false; }
 function setupDownload() {
   const link = $("#apk-link"), note = $("#apk-note");
   if (!link) return;
+  const href = link.getAttribute("href") || "";
+  if (/^https?:\/\//i.test(href)) return;
   let available = true;
-  fetch(link.getAttribute("href"), { method: "HEAD" })
+  fetch(href, { method: "HEAD" })
     .then((res) => { available = res.ok; if (!res.ok) console.warn("[DUX] APK 파일을 찾을 수 없습니다:", link.href); })
     .catch(() => { available = true; });
   link.addEventListener("click", (e) => {

@@ -305,17 +305,19 @@
           <p class="kick kick--light"><img class="dl__icon" src="assets/icons/dux-icon-64.png" width="36" height="36" alt="" />DUX · Android 앱</p>
           <h2 id="t-download" class="h2">나에게 맞는 길,<br />지금 탐색해 보세요.</h2>
           <p class="body">휴대폰 카메라로 QR을 찍거나, 휴대폰에서 아래 버튼을 눌러 DUX 앱을 설치하세요.</p>
-          <!-- 교체 지점: 실제 APK 파일 경로 -->
-          <a class="dl__btn" id="apk-link" href="downloads/dux.apk" download>
+          <!-- 실제 APK 다운로드 경로 (GitHub Release 최신 버전 직링크) -->
+          <a class="dl__btn" id="apk-link" href="https://github.com/Bluemon7894/DUX/releases/latest/download/DUX.apk" download="DUX.apk">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/></svg>
-            앱 받기
+            앱 받기 (v1.0.3)
           </a>
-          <p class="dl__note" id="apk-note" role="status" aria-live="polite">Android 전용 설치 파일(APK)입니다. 설치할 때 ‘알 수 없는 앱 설치’를 허용해 주세요.</p>
+          <p class="dl__note" id="apk-note" role="status" aria-live="polite">Android 전용 설치 파일(APK · v1.0.3)입니다. 설치할 때 ‘알 수 없는 앱 설치’를 허용해 주세요.</p>
         </div>
         <figure class="dl__qr">
-          <!-- 교체 지점: 실제 다운로드 QR 이미지 -->
-          <img src="assets/images/qr-placeholder.svg" width="220" height="220" alt="DUX 앱 다운로드 QR 코드" />
-          <figcaption>카메라로 스캔</figcaption>
+          <!-- 실제 다운로드 QR 이미지 (https://github.com/Bluemon7894/DUX/releases/latest/download/DUX.apk) -->
+          <a href="https://github.com/Bluemon7894/DUX/releases/latest/download/DUX.apk" download="DUX.apk" aria-label="QR 코드로 DUX APK 바로 다운로드">
+            <img src="assets/images/qr-placeholder.svg?v=103" width="220" height="220" alt="DUX 앱 다운로드 QR 코드" />
+          </a>
+          <figcaption>카메라로 스캔 · 바로 다운로드</figcaption>
         </figure>
       </div>
       <p class="fine">© 2026 Team Innovation. All rights reserved.<span class="osm-credit"> · 지도 데이터 © OpenStreetMap 기여자</span></p>
@@ -330,6 +332,6 @@
   <!-- 배경음악: 브라우저가 자동 재생을 막으면 첫 클릭·키 입력 때 시작 -->
   <audio id="bgm" src="assets/audio/main.mp3" loop preload="auto"></audio>
 
-  <script type="module" src="js/main.js?v=20261024n"></script>
+  <script type="module" src="js/main.js?v=20261025v103"></script>
 </body>
 </html>
