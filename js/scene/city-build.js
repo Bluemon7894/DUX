@@ -354,7 +354,7 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
   const P = city.pois;
   const avoid = (x, z) => nearCross(x, z, 7) || (P.stop && Math.hypot(x - P.stop.x, z - P.stop.z) < 12) || (P.elevator && Math.hypot(x - P.elevator.x, z - P.elevator.z) < 7);
   const mainLines = mainRoads.filter((rd) => rd.k === "main").map((rd) => toPts(rd.pts));
-  const nearMain = (x, z, d) => mainLines.some((pts) => {
+  const nearLines = (lines, x, z, d) => lines.some((pts) => {
     for (let i = 0; i < pts.length - 1; i++) {
       const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
       const vx = bx - ax, vz = bz - az, L2 = vx * vx + vz * vz || 1;
@@ -363,6 +363,7 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     }
     return false;
   });
+  const nearMain = (x, z, d) => nearLines(mainLines, x, z, d);
   mainRoads.forEach((rd) => {
     const pts = toPts(rd.pts);
     const curb = rd.w / 2 + 0.85;
@@ -451,8 +452,12 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     scene.add(new LineSegments(g, new LineBasicMaterial({ color: "#0d0c0b" })));
   }
   // 주차 차량 (골목마다 세단·SUV·경차·1톤 트럭이 섞여 있음)
+  // 걷는 경로를 가로막는 차는 빼냄: 차 앞·가운데·뒤가 경로 중심선에서 1.9m 안이면 제외
+  const walkLines = ["w1", "w2", "w3"].filter((k) => city.route && city.route[k]).map((k) => toPts(city.route[k]));
+  const blocksWalk = ([x, z, ang]) => [-2.4, 0, 2.4].some((t) => nearLines(walkLines, x + Math.sin(ang) * t, z + Math.cos(ang) * t, 1.9));
+  const parkedOk = parked.filter((s) => !blocksWalk(s));
   const parkType = (q) => (q < 0.36 ? "sedan" : q < 0.6 ? "suv" : q < 0.8 ? "hatch" : q < 0.94 ? "truck" : "taxi");
-  const parkedFleet = parked.length ? createFleet(scene, parked.map((s) => {
+  const parkedFleet = parkedOk.length ? createFleet(scene, parkedOk.map((s) => {
     const type = parkType(s[3]);
     return { type, x: s[0], z: s[1], ang: s[2], color: bodyColor(type, (s[3] * 7.31) % 1) };
   }), patchFog) : null;

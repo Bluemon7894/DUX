@@ -38,7 +38,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
-  <link rel="stylesheet" href="css/style.css?v=20261024i" />
+  <link rel="stylesheet" href="css/style.css?v=20261024l" />
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -53,6 +53,8 @@
       <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
       <symbol id="ic-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
       <symbol id="ic-elev" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v18M8 9l-1.5 2h3zM16 13l1.5-2h-3z" stroke="currentColor" stroke-width="1.6" fill="currentColor"/></symbol>
+      <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="currentColor"/></symbol>
+      <symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
       <symbol id="ic-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     </defs>
   </svg>
@@ -87,11 +89,14 @@
   <header class="hd">
     <a class="hd__brand" href="#c-intro" aria-label="DUX - 맞춤형 AI 안내앱 서비스, 처음으로">
       <img src="assets/icons/dux-icon-64.png" width="32" height="32" alt="" />
-      <span>DUX</span>
-      <span class="hd__sub">-</span>
-      <span class="hd__sub">맞춤형 AI 안내앱 서비스</span>
+      <span class="hd__name">DUX</span>
+      <span class="hd__sub hd__dash">-</span>
+      <span class="hd__sub hd__tag">맞춤형 AI 안내앱 서비스</span>
     </a>
     <div class="hd__nav">
+      <button class="snd tod" id="tod-btn" type="button" aria-label="지금 밤 · 낮으로 바꾸기">
+        <svg class="tod__ic" aria-hidden="true"><use href="#ic-moon"/></svg><span class="snd__txt">밤</span>
+      </button>
       <button class="snd" id="snd" type="button" aria-pressed="false" aria-label="배경음악 켜기">
         <span class="snd__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="snd__txt">음악 켜기</span>
       </button>
@@ -282,7 +287,7 @@
       </div>
     </section>
 
-    <section class="ch ch--trust" id="s-trust" data-a="0.818" data-b="0.87" aria-labelledby="t-trust">
+    <section class="ch ch--trust" id="s-trust" data-a="0.81" data-b="0.905" aria-labelledby="t-trust">
       <div class="copy">
         <p class="kick"><span class="n">기능 6</span>예측 신뢰도 표시</p>
         <h2 id="t-trust" class="h2">확실하지 않을 때는<br />그렇다고 함께 보여 드려요.</h2>
@@ -290,14 +295,14 @@
       </div>
     </section>
 
-    <section class="ch ch--arrive" id="s-arrive" data-a="0.87" data-b="0.935" aria-labelledby="t-arrive">
+    <section class="ch ch--arrive" id="s-arrive" data-a="0.905" data-b="0.955" aria-labelledby="t-arrive">
       <div class="copy">
         <h2 id="t-arrive" class="title title--sm"><span data-t="39">--:--</span>, 도착.</h2>
         <p class="lead">처음 말한 조건 세 가지를 끝까지 지켰어요. 계단 0곳, 환승 1회.</p>
       </div>
     </section>
 
-    <section class="ch ch--download" id="s-download" data-a="0.935" data-b="1.01" aria-labelledby="t-download">
+    <section class="ch ch--download" id="s-download" data-a="0.955" data-b="1.01" aria-labelledby="t-download">
       <div class="dl">
         <div class="dl__copy">
           <p class="kick kick--light"><img class="dl__icon" src="assets/icons/dux-icon-64.png" width="36" height="36" alt="" />DUX · Android 앱</p>
@@ -316,7 +321,7 @@
           <figcaption>카메라로 스캔</figcaption>
         </figure>
       </div>
-      <p class="fine">© 2026 Innovation<span class="osm-credit"> · 지도 데이터 © OpenStreetMap 기여자</span></p>
+      <p class="fine">© 2026 Team Innovation. All rights reserved.<span class="osm-credit"> · 지도 데이터 © OpenStreetMap 기여자</span></p>
     </section>
   </main>
 
@@ -328,6 +333,6 @@
   <!-- 배경음악: 브라우저가 자동 재생을 막으면 첫 클릭·키 입력 때 시작 -->
   <audio id="bgm" src="assets/audio/main.mp3" loop preload="auto"></audio>
 
-  <script type="module" src="js/main.js?v=20261024f"></script>
+  <script type="module" src="js/main.js?v=20261024h"></script>
 </body>
 </html>

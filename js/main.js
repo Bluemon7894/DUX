@@ -4,7 +4,7 @@
  * 스크롤 진행률 p(0~1)에 따라
  *  - 카메라(눈높이 1.6m)가 집 앞 골목 → 이면도로 → 횡단보도 → 버스정류장 → 지하철 엘리베이터 → (지하철) → 400번 버스 안 → 도착지로 이동하고
  *  - 바닥의 금색 경로선, 버스정보안내기, 손에 든 휴대폰의 DUX 화면과 지도가 함께 바뀝니다.
- * 하늘·조명은 방문자의 실제 현재 시각을 따릅니다(낮·노을·밤·새벽). 점검용: ?t=18.5 처럼 시각을, ?p=0.45 처럼 진행률을 지정.
+ * 하늘·조명은 기본이 밤이고, 머리말의 낮·밤 버튼으로 바꿉니다. 점검용: ?t=18.5 처럼 시각을, ?dev&p=0.45 처럼 진행률을 지정.
  * 거리 데이터는 <meta name="dux-city-data"> 에 경로가 있으면 그 파일(OpenStreetMap 변환본)을, 없으면 js/scene/city-gen.js 의 생성 동네를 씁니다.
  */
 import { WebGLRenderer, Scene, PerspectiveCamera, FogExp2, HemisphereLight, DirectionalLight, Vector3, Color } from "../vendor/three.min.js";
@@ -31,11 +31,14 @@ const FONT = '"Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun 
 const DEG = Math.PI / 180;
 
 /* ==========================================================================
-   실제 시각
+   시각: 기본은 밤 9시 출발, 낮으로 바꾸면 오후 2시 30분 출발
    ========================================================================== */
 const NOW = new Date();
 const qt = parseFloat(qs.get("t"));
-const START_MIN = Number.isFinite(qt) ? qt * 60 : NOW.getHours() * 60 + NOW.getMinutes() + NOW.getSeconds() / 60;
+const SKY_MIN = { night: 21 * 60, day: 14.5 * 60 };
+let skyMode = Number.isFinite(qt) && qt >= 6.5 && qt < 18.3 ? "day" : "night";
+let START_MIN = Number.isFinite(qt) ? qt * 60 : SKY_MIN[skyMode];
+let skyMin = START_MIN; // 하늘에 쓰는 시각. 버튼을 누르면 새 출발 시각으로 빨리 감듯 넘어감
 function fmt(min, pad = true) {
   const m = ((Math.floor(min) % 1440) + 1440) % 1440;
   const h = Math.floor(m / 60), mm = m % 60;
@@ -43,11 +46,11 @@ function fmt(min, pad = true) {
 }
 // 이동 경과 시간(분): 출발 → 정류장 4분 → 지연 → 지하철 → 400번 버스 → 35분 뒤 도착 (+출발 전 4분)
 function tripMin(p) {
-  let m = 4 * smooth(0.33, 0.5, p);
-  if (p > 0.62) m = 4 + 4 * smooth(0.62, 0.735, p);
+  let m = 4 * smooth(0.33, 0.46, p);
+  if (p > 0.62) m = 4 + 4 * smooth(0.62, 0.705, p);
   if (p > 0.735) m = 8 + 12 * smooth(0.741, 0.756, p);
-  if (p > 0.756) m = 20 + 11 * smooth(0.771, 0.803, p);
-  if (p > 0.803) m = 31 + 8 * smooth(0.82, 0.905, p);
+  if (p > 0.756) m = 20 + 11 * smooth(0.772, 0.803, p);
+  if (p > 0.803) m = 31 + 8 * smooth(0.842, 0.915, p);
   return m;
 }
 function fillTimes() {
@@ -137,16 +140,20 @@ function walk(path, d) {
 }
 
 // 지하철에서 올라와 400번 버스를 타고, 도서관 입구에서 가운데 문으로 내린 뒤 버스가 떠남 (진행률)
-const BUS = { show: 0.752, close: 0.764, go: 0.771, stop: 0.803, out: 0.82, leave: 0.832, gone: 0.875 };
+// 문이 다 닫힌 뒤(0.768) 출발하고, 다 선 뒤(0.803) 문이 열리고, 문이 다 열린 뒤(0.81) 내림
+const BUS = { show: 0.752, close: 0.76, go: 0.772, stop: 0.803, alight: 0.81, out: 0.825, leave: 0.83 };
 const busPose = { x: 0, z: 0, yaw: 0, show: false, inside: false, doors: 0, arriving: false };
+let busDepart = 0; // 문을 닫은 뒤 떠나는 데 걸린 시간(초). 스크롤을 멈춰도 버스는 제 속도로 떠남
 function busState(p) {
   const R = world.bus, b = paths.bus;
   let d = lerp(-R.CAM.z, b.length - R.DOOR.z, smooth(BUS.go, BUS.stop, p));
-  if (p > BUS.leave) d += 240 * Math.pow(smooth(BUS.leave, BUS.gone, p), 2);
+  // 떠날 때: 2.5m/s² 로 가속해 14m/s 까지
+  const t = busDepart, away = t < 5.6 ? 1.25 * t * t : 39 + 14 * (t - 5.6);
+  if (p > BUS.leave) d += away;
   [busPose.x, busPose.z, busPose.yaw] = b.pose(d);
-  busPose.show = p > BUS.show && p < BUS.gone;
+  busPose.show = p > BUS.show && !(p > BUS.leave && away > 380);
   busPose.inside = p < BUS.out;
-  busPose.doors = Math.max(1 - smooth(BUS.close, BUS.go, p), smooth(BUS.stop, BUS.stop + 0.004, p) * (1 - smooth(BUS.out + 0.002, BUS.leave, p)));
+  busPose.doors = Math.max(1 - smooth(BUS.close, BUS.close + 0.008, p), smooth(BUS.stop, BUS.stop + 0.004, p) * (1 - smooth(BUS.out + 0.001, BUS.leave, p)));
   busPose.arriving = p > 0.79 && p < BUS.out;
   return busPose;
 }
@@ -164,7 +171,7 @@ function setupAlight(w3Start) {
   paths.rideYaw = yaw;
 }
 
-const STILLS = [0.02, 0.17, 0.3, 0.45, 0.56, 0.7, 0.845, 0.92, 1];
+const STILLS = [0.02, 0.185, 0.3, 0.465, 0.58, 0.71, 0.84, 0.94, 1];
 const cam = { x: 0, z: 0, yaw: 0, d1: 0, d3: 0 };
 function cameraState(p) {
   const { w1, w2, w3 } = paths;
@@ -174,9 +181,9 @@ function cameraState(p) {
   if (p < 0.33) {
     s = walk(w1, 0);
     s.yaw += Math.sin(p * 9) * 0.04;
-    pitch = lerp(64, 1.5, smooth(0.05, 0.2, p)) * DEG;
+    pitch = lerp(64, 1.5, smooth(0.05, 0.17, p)) * DEG;
   } else if (p < 0.5) {
-    const d = smooth(0.33, 0.5, p) * w1.length;
+    const d = smooth(0.33, 0.46, p) * w1.length;
     s = walk(w1, d); bob = d; cam.d1 = d;
   } else if (p < 0.62) {
     s = walk(w1, w1.length); cam.d1 = w1.length;
@@ -184,7 +191,7 @@ function cameraState(p) {
     s.yaw = angLerp(s.yaw, toBis, smooth(0.5, 0.535, p) * (1 - smooth(0.585, 0.62, p) * 0.6));
     pitch = 8 * DEG * smooth(0.5, 0.535, p) * (1 - smooth(0.585, 0.62, p));
   } else if (p < 0.757) {
-    const d = smooth(0.62, 0.735, p) * w2.length;
+    const d = smooth(0.62, 0.705, p) * w2.length;
     s = walk(w2, d); bob = d + 400;
   } else if (p < BUS.stop) {
     // 버스 안: 통로에 서서 앞을 봄. 엔진 떨림과 가감속에 따라 몸이 살짝 흔들림
@@ -199,8 +206,8 @@ function cameraState(p) {
       s.yaw += Math.sin(time * 0.7) * 0.012 * sp;
     }
   } else if (p < BUS.out) {
-    // 하차: 문 쪽으로 돌아서 내려와 걷는 방향으로
-    const A = paths.alight, t = smooth(BUS.stop, BUS.out, p);
+    // 하차: 문이 다 열리면 문 쪽으로 돌아서 내려와 걷는 방향으로
+    const A = paths.alight, t = smooth(BUS.alight, BUS.out, p);
     const d = A.length * smooth(0.12, 1, t);
     const [x, z] = A.at(d);
     const travel = yawTo([x, z], A.at(Math.min(A.length, d + 1.2)));
@@ -208,17 +215,18 @@ function cameraState(p) {
     s = { x, z, yaw };
     eye = lerp(world.bus.CAM.y, EYE, smooth(paths.alightDoor - 0.03, paths.alightDoor + 0.1, d / A.length));
     bob = d + 700;
-  } else if (p < 0.905) {
-    const d = smooth(BUS.out, 0.905, p) * w3.length;
+  } else if (p < 0.915) {
+    // 내린 자리에서 잠시 서서 떠나는 버스를 보고(~0.842) 도서관으로 걸음
+    const d = smooth(0.842, 0.915, p) * w3.length;
     s = walk(w3, d); bob = d + 900; cam.d3 = d;
   } else {
     s = walk(w3, w3.length); cam.d3 = w3.length;
-    pitch = 4 * DEG * smooth(0.905, 0.98, p);
+    pitch = 4 * DEG * smooth(0.915, 0.932, p);
   }
   // 도착 무렵에는 길 끝을 바라봄 (아침 해가 낮게 떠 있으면 해 쪽으로)
-  if (p > 0.86) {
+  if (p > 0.87) {
     const lowMorningSun = !tod.evening && tod.sunElev > -6 && tod.sunElev < 14;
-    s.yaw = angLerp(s.yaw, lowMorningSun ? tod.sunAz : 0, smooth(0.86, 0.93, p));
+    s.yaw = angLerp(s.yaw, lowMorningSun ? tod.sunAz : 0, smooth(0.87, 0.925, p));
   }
   s.pitch = pitch;
   s.bob = bob;
@@ -273,17 +281,19 @@ function updateWorld(p, cp, time, dt) {
   fogUniforms.uSunGlow.value.copy(tod.glow).multiplyScalar(tod.sunElev > -3 ? tod.sunStrength : 0);
 
   const rb = world.ribbons;
-  rb.w1.setProgress(smooth(0.24, 0.31, p));
-  rb.busA.setProgress(smooth(0.27, 0.33, p));
+  // 경로선은 각 단계의 멈춤 지점 전에 다 그려지도록
+  rb.w1.setProgress(smooth(0.232, 0.27, p));
+  rb.busA.setProgress(smooth(0.25, 0.29, p));
   rb.w2.setProgress(smooth(0.6, 0.645, p));
   rb.w3.setProgress(p > 0.785 ? smooth(0.79, 0.83, p) : 0);
   const delay = smooth(0.54, 0.575, p);
   rb.busA.mat.color.set("#e6b54a").lerp(new Color("#ff8a1e"), delay);
-  rb.busA.mat.opacity = lerp(1, 0.28, delay) * (1 - smooth(0.7, 0.74, p));
-  rb.w1.mat.opacity = 1 - smooth(0.7, 0.74, p);
+  rb.busA.mat.opacity = lerp(1, 0.28, delay) * (1 - smooth(0.72, 0.74, p));
+  rb.w1.mat.opacity = 1 - smooth(0.72, 0.74, p);
   const delayed = p > 0.535;
   if (delayed !== bisDelayed) { bisDelayed = delayed; world.setBis(delayed); }
   world.update(reduceMotion ? 0 : time, reduceMotion ? 0 : dt, tod);
+  busDepart = cp > BUS.leave ? busDepart + dt : 0;
   world.bus.update(busState(cp), reduceMotion ? 0 : time, dt, tod);
 }
 
@@ -307,14 +317,14 @@ const tripClocks = $$('[data-clock="trip"]');
 let introIn = reduceMotion ? 1 : 0;
 
 const HUD = [
-  [0.08, "출발 전"], [0.22, "조건 말하는 중"], [0.33, "경로 고르는 중"], [0.5, "정류장으로 걷는 중"],
-  [0.6, "버스 지연 감지"], [0.735, "대안 경로로 이동"], [0.762, "지하철 2정거장 이동 중"], [0.818, "400번 버스 타고 가는 중"],
-  [0.87, "도서관으로 걷는 중"], [0.935, "도착"], [1.1, ""]
+  [0.08, "출발 전"], [0.22, "조건 말하는 중"], [0.33, "경로 고르는 중"], [0.46, "정류장으로 걷는 중"], [0.5, "정류장 도착"],
+  [0.6, "버스 지연 감지"], [0.705, "대안 경로로 이동"], [0.735, "지하철 엘리베이터 앞"], [0.762, "지하철 2정거장 이동 중"],
+  [0.825, "400번 버스 타고 가는 중"], [0.915, "도서관으로 걷는 중"], [0.955, "도착"], [1.1, ""]
 ];
 const hud = $(".hud");
 const PHONE = [
   [0.08, "lock"], [0.22, "voice"], [0.33, "understood"], [0.5, "nav"], [0.6, "alert"],
-  [0.735, "compare"], [0.764, null], [0.82, "ride"], [0.87, "trust"], [0.935, "arrived"], [1.1, null]
+  [0.735, "compare"], [0.764, null], [0.825, "ride"], [0.915, "trust"], [0.955, "arrived"], [1.1, null]
 ];
 const rideLeft = $("#ride-left");
 const rideTxt = $("#ride-txt");
@@ -333,6 +343,7 @@ function setupPhoneMap() {
   const w2 = toPts(R.w2), w3 = toPts(R.w3);
   mapData = {
     w1: toPts(R.w1), busA: toPts(R.busA), w2, w3, dest: R.dest, origin: R.w1.slice(0, 2),
+    sub2: R.sub2 ? toPts(R.sub2) : null, wEnd: R.wEnd ? toPts(R.wEnd) : null,
     sub: R.subAlt ? toPts(R.subAlt) : [w2[w2.length - 1], w3[0]],
     bus2: R.busAlt ? toPts(R.busAlt) : null
   };
@@ -343,14 +354,19 @@ function phoneView(s) {
   const M = mapData;
   const user = { x: cam.x, z: cam.z, yaw: cam.yaw };
   const follow = (scale, segments, extra = {}) => Object.assign({ mode: "follow", x: cam.x, z: cam.z, yaw: cam.yaw, scale, segments, user }, extra);
+  // 처음 추천 경로의 402번 이후 구간: 2호선 환승 → 도보
+  const after402 = (dim) => [
+    ...(M.sub2 ? [{ pts: M.sub2, kind: "sub", label: dim ? null : "2호선", dim }] : []),
+    ...(M.wEnd ? [{ pts: M.wEnd, kind: "walk", dim }] : [])
+  ];
   switch (s) {
     case "voice": return follow(2.2, []);
     case "understood": return {
-      mode: "overview", fit: [...M.w1, ...M.busA, M.dest], top: 0.2, bottom: 0.4, origin: M.origin, dest: M.dest,
-      segments: [{ pts: M.w1, kind: "walk" }, { pts: M.busA, kind: "bus", label: "402" }]
+      mode: "overview", fit: [...M.w1, ...M.busA, ...(M.sub2 || []), ...(M.wEnd || []), M.dest], top: 0.2, bottom: 0.4, origin: M.origin, dest: M.dest,
+      segments: [{ pts: M.w1, kind: "walk" }, { pts: M.busA, kind: "bus", label: "402" }, ...after402(false)]
     };
-    case "nav": return follow(2.5, [{ pts: M.w1, kind: "walk", dim: true }, { pts: paths.w1.rest(cam.d1), kind: "walk" }, { pts: M.busA, kind: "bus", label: "402" }]);
-    case "alert": return follow(1.3, [{ pts: M.w1, kind: "walk", dim: true }, { pts: M.busA, kind: "off", label: "402 · 9분 지연" }], { anchorY: 0.6 });
+    case "nav": return follow(2.5, [{ pts: M.w1, kind: "walk", dim: true }, { pts: paths.w1.rest(cam.d1), kind: "walk" }, { pts: M.busA, kind: "bus", label: "402" }, ...after402(false)]);
+    case "alert": return follow(1.3, [{ pts: M.w1, kind: "walk", dim: true }, { pts: M.busA, kind: "off", label: "402 · 9분 지연" }, ...after402(true)], { anchorY: 0.6 });
     case "compare": {
       const segs = [{ pts: M.busA, kind: "off", dim: true }, { pts: M.w2, kind: "walk" }, { pts: M.sub, kind: "sub", label: "지하철" }];
       if (M.bus2) segs.push({ pts: M.bus2, kind: "bus", label: "400" });
@@ -435,14 +451,15 @@ function updateChapters(p) {
   hudTime.textContent = fmt(START_MIN + m);
   tripClocks.forEach((el) => { el.textContent = fmt(START_MIN + m, false); });
   hudName.textContent = HUD.find(([edge]) => p < edge)[1];
-  hud.classList.toggle("is-off", p > 0.935);
+  hud.classList.toggle("is-off", p > 0.955);
 }
 
 /* ==========================================================================
    스페이스바: 다음 단계로 천천히 이동 (Shift+스페이스는 이전 단계)
    ========================================================================== */
-// 버스에 탄 직후(0.769) · 정류장에 선 순간(0.805)에도 한 번씩 멈춤
-const STOPS = [0, 0.16, 0.29, 0.44, 0.56, 0.68, 0.769, 0.805, 0.845, 0.91, 1];
+// 멈춤 지점은 모두 그 단계의 동작이 끝난 뒤: 글자 입력 완료 · 걷기 끝 · 경로선 다 그림 · 문 다 닫힘/열림 · 장 글이 다 보임
+//  첫 화면 · 말로 조건 설정 · 맞춤 경로 · 정류장 도착 · 지연 알림 · 엘리베이터 앞 · 버스 탑승 · 하차 정류장 · 내린 자리 · 도착 · 앱 받기
+const STOPS = [0, 0.185, 0.3, 0.465, 0.58, 0.71, 0.77, 0.808, 0.84, 0.94, 1];
 let stepAnim = null;
 const easeInOut = (t) => 0.5 - Math.cos(Math.PI * t) / 2;
 function stepTo(dir) {
@@ -480,8 +497,8 @@ function setupLabels() {
   const r = world.city.route, P = world.city.pois;
   const defs = {
     stop: { at: [P.bis.x, 3.6, P.bis.z], show: [0.44, 0.6] },
-    elevator: { at: [P.elevator.x, 3.8, P.elevator.z], show: [0.7, 0.745] },
-    dest: { at: [r.dest[0], 6, r.dest[1]], show: [0.82, 0.93] }
+    elevator: { at: [P.elevator.x, 3.8, P.elevator.z], show: [0.69, 0.745] },
+    dest: { at: [r.dest[0], 6, r.dest[1]], show: [0.82, 0.965] }
   };
   labels = $$(".lbl").map((el) => ({ el, cfg: defs[el.dataset.lbl], v: new Vector3() })).filter((l) => l.cfg);
 }
@@ -531,7 +548,9 @@ function frame(now) {
   if (introIn < 1) introIn = Math.min(1, introIn + dt / 1.8);
   current = reduceMotion ? target : current + (target - current) * (1 - Math.pow(0.045, dt));
   if (Math.abs(target - current) < 0.00004) current = target;
-  skyAt((START_MIN + tripMin(current)) / 60, tod);
+  skyMin = reduceMotion ? START_MIN : skyMin + (START_MIN - skyMin) * (1 - Math.pow(0.06, dt));
+  if (Math.abs(START_MIN - skyMin) < 0.5) skyMin = START_MIN;
+  skyAt((skyMin + tripMin(current)) / 60, tod);
   const cp = cameraP(current);
   if (renderer && world) {
     placeCamera(cp, dt);
@@ -625,6 +644,27 @@ function setupMusic() {
   play();
 }
 
+/* ==========================================================================
+   낮 · 밤 버튼 (기본 밤)
+   ========================================================================== */
+function setupSkyToggle() {
+  const btn = $("#tod-btn");
+  if (!btn) return;
+  const render = () => {
+    const night = skyMode === "night";
+    $("use", btn).setAttribute("href", night ? "#ic-moon" : "#ic-sun");
+    $(".snd__txt", btn).textContent = night ? "밤" : "낮";
+    btn.setAttribute("aria-label", night ? "지금 밤 · 낮으로 바꾸기" : "지금 낮 · 밤으로 바꾸기");
+  };
+  btn.addEventListener("click", () => {
+    skyMode = skyMode === "night" ? "day" : "night";
+    START_MIN = SKY_MIN[skyMode];
+    fillTimes();
+    render();
+  });
+  render();
+}
+
 document.addEventListener("focusin", (e) => {
   const ch = e.target.closest && e.target.closest(".ch");
   if (!ch || ch.classList.contains("is-on")) return;
@@ -663,6 +703,7 @@ async function init() {
   fillTimes();
   setupDownload();
   setupMusic();
+  setupSkyToggle();
   readScroll();
   current = target;
   resize();

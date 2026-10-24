@@ -5,7 +5,7 @@
  *   roads:     { k: "main" | "sec" | "alley", w: 차도 폭, sw: 보도 폭, pts: [x, z, x, z, ...] }
  *   buildings: { pts: [x, z, ...], h, floors, k: "res" | "com" | "apt" | "civic", front?: 변 번호, shop?: bool, sign? }
  *   parks:     { pts: [...] }
- *   route:     걷는 경로와 장소 (home, w1, stop, busA, w2, elevator, w3, dest)
+ *   route:     걷는 경로와 장소 (home, w1, stop, busA·sub2·wEnd(처음 추천), w2, elevator, subAlt·busAlt(대안), w3, dest)
  * 좌표: x = 동쪽(m), z = 남쪽(m), 대로 중심선이 z = 0
  */
 
@@ -164,7 +164,10 @@ export function generateCity() {
     home: [hx, zAt(home, hx)],
     w1: [hx, zAt(home, hx), xw, zAt(home, xw), xw, SW_N, xc, SW_N, xc, SW_S, -79, SW_S],
     stop: [-64, 11.2],
-    busA: [-62, 7.4, 120, 7.4, 330, 7.4, 600, 7.4],
+    // 처음 추천: 도보 → 402번 버스 → 2호선 환승 → 도보
+    busA: [-62, 7.4, 120, 7.4, 300, 7.4],
+    sub2: [300, 4, 556, 4],
+    wEnd: [556, 12.9, 584, 13.0, 593, 10.9, 595, 8.4],
     w2: [-79, SW_S, -66, 13.3, 36, 13.3],
     elevator: [44, 12.2],
     subAlt: [44, 12.2, 58, 4, 300, 4],          // 대안: 지하철 2정거장 (휴대폰 지도 표시용)
