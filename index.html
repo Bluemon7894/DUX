@@ -6,8 +6,8 @@
   <title>DUX - 오늘의 나에게 맞는 길</title>
   <meta name="description" content="DUX(덕스)는 원하는 이동 조건을 말로 설정하면 그 조건에 맞는 경로를 찾고, 버스 지연 같은 상황이 생겨도 같은 조건으로 다시 안내하는 길찾기 앱입니다. Android 앱으로 내려받을 수 있습니다." />
   <meta name="theme-color" content="#0B0A08" />
-  <link rel="icon" type="image/png" href="assets/dux-icon-64.png" />
-  <link rel="apple-touch-icon" href="assets/dux-icon-192.png" />
+  <link rel="icon" type="image/png" href="assets/icons/dux-icon-64.png" />
+  <link rel="apple-touch-icon" href="assets/icons/dux-icon-192.png" />
   <!-- 실제 지도 변환본을 쓰려면 content 에 경로를 넣으세요. 예: data/city.json -->
   <meta name="dux-city-data" content="" />
   <script>
@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
-  <link rel="stylesheet" href="v4.css?v=20261024d" />
+  <link rel="stylesheet" href="css/style.css?v=20261024e" />
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -52,23 +52,34 @@
       <span class="lbl lbl--dest" data-lbl="dest"><b>도착</b>새솔 시립도서관</span>
     </div>
   </div>
-  <div class="veil" id="veil" aria-hidden="true"><p>지하철 2정거장 → 400번 버스 · 계단 없이 이동 중</p></div>
+  <!-- 지하철 구간: 터널 불빛과 노선도 위 열차 -->
+  <div class="veil" id="veil" aria-hidden="true">
+    <div class="veil__streaks"></div>
+    <div class="metro">
+      <p class="metro__cap"><svg><use href="#ic-sub"/></svg>지하철 2정거장 · 갈아탈 때도 엘리베이터로</p>
+      <div class="metro__line">
+        <span class="metro__st" data-at="0" style="--at:0"><b>엘리베이터로 탑승</b></span>
+        <span class="metro__st" data-at="0.5" style="--at:0.5"><b>1정거장</b></span>
+        <span class="metro__st" data-at="1" style="--at:1"><b>하차 · 400번 버스로</b></span>
+        <span class="metro__train"><svg><use href="#ic-sub"/></svg></span>
+      </div>
+    </div>
+  </div>
   <div class="grain" aria-hidden="true"></div>
 
   <header class="hd">
     <a class="hd__brand" href="#c-intro" aria-label="DUX - 맞춤형 AI 안내앱 서비스, 처음으로">
-      <img src="assets/dux-icon-64.png" width="32" height="32" alt="" />
+      <img src="assets/icons/dux-icon-64.png" width="32" height="32" alt="" />
       <span>DUX</span>
       <span class="hd__sub">-</span>
       <span class="hd__sub">맞춤형 AI 안내앱 서비스</span>
     </a>
-    <nav class="hd__nav" aria-label="기능 바로가기">
-      <a href="#c-speak">조건 설정</a>
-      <a href="#c-match">맞춤 경로</a>
-      <a href="#c-reroute">재탐색</a>
-      <a href="#c-trust">신뢰도</a>
+    <div class="hd__nav">
+      <button class="snd" id="snd" type="button" aria-pressed="false" aria-label="배경음악 켜기">
+        <span class="snd__bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="snd__txt">음악 켜기</span>
+      </button>
       <a href="#c-download" class="hd__dl">앱 받기</a>
-    </nav>
+    </div>
   </header>
 
   <div class="rail" aria-hidden="true"><i id="rail-fill"></i></div>
@@ -94,7 +105,7 @@
           <p class="lk__date" data-date>--</p>
           <p class="lk__time" data-clock="now">--:--</p>
           <div class="noti">
-            <img class="appic" src="assets/dux-icon-64.png" alt="" />
+            <img class="appic" src="assets/icons/dux-icon-64.png" alt="" />
             <div><p class="noti__app">DUX<span>지금</span></p><p class="noti__msg">출발 전에 오늘 원하는 이동 방식을 말해 주세요. 그대로 길을 찾아 드릴게요.</p></div>
           </div>
         </div>
@@ -138,7 +149,7 @@
         <div class="ps" data-ps="alert">
           <div class="turn turn--wait"><span class="turn__ic"><svg><use href="#ic-bus"/></svg></span><div><p class="turn__dist">402번</p><p class="turn__txt">정류장에서 기다리는 중</p></div></div>
           <div class="push">
-            <img class="appic" src="assets/dux-icon-64.png" alt="" />
+            <img class="appic" src="assets/icons/dux-icon-64.png" alt="" />
             <div><p class="noti__app">DUX<span>지금</span></p><p class="push__title">타려던 402번 버스가 9분 늦어져요</p><p class="push__body">이대로면 2호선 환승을 놓칠 수 있어요. 처음 말한 조건 그대로 다른 길을 찾고 있어요.</p></div>
           </div>
           <div class="navfoot"><div><p class="navfoot__eta"><b class="warn" data-t="40">--:--</b> 도착 예상</p><p class="navfoot__sub">지연 반영 · 환승 실패 가능성 높음</p></div><span class="xbtn">종료</span></div>
@@ -160,6 +171,12 @@
             <p class="reason"><svg><use href="#ic-info"/></svg>4분 더 걸리지만 계단 없이 갈 수 있는 경로예요.</p>
             <span class="pbtn">이 경로로 변경</span>
           </div>
+        </div>
+
+        <!-- 400번 버스 타고 가는 중 -->
+        <div class="ps" data-ps="ride">
+          <div class="turn turn--ride"><span class="turn__ic"><svg><use href="#ic-bus"/></svg></span><div><p class="turn__dist" id="ride-left">2정거장 뒤 내려요</p><p class="turn__txt" id="ride-txt">400번 · 내릴 때가 되면 알려 드려요</p></div></div>
+          <div class="navfoot"><div><p class="navfoot__eta"><b data-t="39">--:--</b> 도착 예정</p><p class="navfoot__sub">내린 뒤 도서관까지 걸어서 8분 · 계단 없는 길</p></div><span class="xbtn">종료</span></div>
         </div>
 
         <!-- 예측 신뢰도 -->
@@ -249,7 +266,7 @@
       </div>
     </section>
 
-    <section class="ch ch--trust" id="s-trust" data-a="0.775" data-b="0.87" aria-labelledby="t-trust">
+    <section class="ch ch--trust" id="s-trust" data-a="0.818" data-b="0.87" aria-labelledby="t-trust">
       <div class="copy">
         <p class="kick"><span class="n">기능 6</span>예측 신뢰도 표시</p>
         <h2 id="t-trust" class="h2">확실하지 않을 때는<br />그렇다고 함께 보여 드려요.</h2>
@@ -267,7 +284,7 @@
     <section class="ch ch--download" id="s-download" data-a="0.935" data-b="1.01" aria-labelledby="t-download">
       <div class="dl">
         <div class="dl__copy">
-          <p class="kick kick--light"><img class="dl__icon" src="assets/dux-icon-64.png" width="36" height="36" alt="" />DUX · Android 앱</p>
+          <p class="kick kick--light"><img class="dl__icon" src="assets/icons/dux-icon-64.png" width="36" height="36" alt="" />DUX · Android 앱</p>
           <h2 id="t-download" class="h2">나에게 맞는 길,<br />지금 탐색해 보세요.</h2>
           <p class="body">휴대폰 카메라로 QR을 찍거나, 휴대폰에서 아래 버튼을 눌러 DUX 앱을 설치하세요.</p>
           <!-- 교체 지점: 실제 APK 파일 경로 -->
@@ -279,7 +296,7 @@
         </div>
         <figure class="dl__qr">
           <!-- 교체 지점: 실제 다운로드 QR 이미지 -->
-          <img src="assets/qr-placeholder.svg" width="220" height="220" alt="DUX 앱 다운로드 QR 코드" />
+          <img src="assets/images/qr-placeholder.svg" width="220" height="220" alt="DUX 앱 다운로드 QR 코드" />
           <figcaption>카메라로 스캔</figcaption>
         </figure>
       </div>
@@ -289,15 +306,12 @@
 
   <div class="track" aria-hidden="true">
     <span class="anchor" id="c-intro" style="--p:0"></span>
-    <span class="anchor" id="c-speak" style="--p:0.16"></span>
-    <span class="anchor" id="c-match" style="--p:0.3"></span>
-    <span class="anchor" id="c-ride" style="--p:0.44"></span>
-    <span class="anchor" id="c-delay" style="--p:0.56"></span>
-    <span class="anchor" id="c-reroute" style="--p:0.68"></span>
-    <span class="anchor" id="c-trust" style="--p:0.83"></span>
     <span class="anchor" id="c-download" style="--p:1"></span>
   </div>
 
-  <script type="module" src="v4.js?v=20261024c"></script>
+  <!-- 배경음악: 브라우저가 자동 재생을 막으면 첫 클릭·키 입력 때 시작 -->
+  <audio id="bgm" src="assets/audio/main.mp3" loop preload="auto"></audio>
+
+  <script type="module" src="js/main.js?v=20261024e"></script>
 </body>
 </html>

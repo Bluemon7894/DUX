@@ -1,17 +1,18 @@
 /**
- * DUX v4 — 1인칭으로 걷는 거리
+ * DUX 홍보 사이트 — 1인칭으로 걷는 거리
  *
  * 스크롤 진행률 p(0~1)에 따라
- *  - 카메라(눈높이 1.6m)가 집 앞 골목 → 이면도로 → 횡단보도 → 버스정류장 → 지하철 엘리베이터 → (이동) → 도착지로 걷고
+ *  - 카메라(눈높이 1.6m)가 집 앞 골목 → 이면도로 → 횡단보도 → 버스정류장 → 지하철 엘리베이터 → (지하철) → 400번 버스 안 → 도착지로 이동하고
  *  - 바닥의 금색 경로선, 버스정보안내기, 손에 든 휴대폰의 DUX 화면과 지도가 함께 바뀝니다.
  * 하늘·조명은 방문자의 실제 현재 시각을 따릅니다(낮·노을·밤·새벽). 점검용: ?t=18.5 처럼 시각을, ?p=0.45 처럼 진행률을 지정.
- * 거리 데이터는 <meta name="dux-city-data"> 에 경로가 있으면 그 파일(OpenStreetMap 변환본)을, 없으면 city-gen.js 의 생성 동네를 씁니다.
+ * 거리 데이터는 <meta name="dux-city-data"> 에 경로가 있으면 그 파일(OpenStreetMap 변환본)을, 없으면 js/scene/city-gen.js 의 생성 동네를 씁니다.
  */
-import { WebGLRenderer, Scene, PerspectiveCamera, FogExp2, HemisphereLight, DirectionalLight, Vector3, Color } from "./vendor/three.min.js";
-import { generateCity } from "./city-gen.js";
-import { buildCity, resample } from "./city-build.js";
-import { createSky, skyAt, fogUniforms, patchFog } from "./sky.js";
+import { WebGLRenderer, Scene, PerspectiveCamera, FogExp2, HemisphereLight, DirectionalLight, Vector3, Color } from "../vendor/three.min.js";
+import { generateCity } from "./scene/city-gen.js";
+import { buildCity, resample } from "./scene/city-build.js";
+import { createSky, skyAt, fogUniforms, patchFog } from "./scene/sky.js";
 import { createPhoneMap } from "./phone-map.js";
+import { createBusRide } from "./scene/bus-ride.js";
 
 const root = document.documentElement;
 const qs = new URLSearchParams(location.search);
@@ -40,12 +41,13 @@ function fmt(min, pad = true) {
   const h = Math.floor(m / 60), mm = m % 60;
   return `${pad ? String(h).padStart(2, "0") : h}:${String(mm).padStart(2, "0")}`;
 }
-// 이동 경과 시간(분): 출발 → 정류장 4분 → 지연 → 대안 이동 → 35분 뒤 도착 (+출발 전 4분)
+// 이동 경과 시간(분): 출발 → 정류장 4분 → 지연 → 지하철 → 400번 버스 → 35분 뒤 도착 (+출발 전 4분)
 function tripMin(p) {
   let m = 4 * smooth(0.33, 0.5, p);
   if (p > 0.62) m = 4 + 4 * smooth(0.62, 0.735, p);
-  if (p > 0.735) m = 8 + 23 * smooth(0.735, 0.775, p);
-  if (p > 0.775) m = 31 + 8 * smooth(0.775, 0.9, p);
+  if (p > 0.735) m = 8 + 12 * smooth(0.741, 0.756, p);
+  if (p > 0.756) m = 20 + 11 * smooth(0.771, 0.803, p);
+  if (p > 0.803) m = 31 + 8 * smooth(0.82, 0.905, p);
   return m;
 }
 function fillTimes() {
@@ -104,6 +106,19 @@ function sampler(flat) {
   return { length: rs.length, at, rest };
 }
 
+// 버스 노선: 양 끝 너머로도 곧게 이어짐 (출발 전 · 떠난 뒤)
+function busPath(flat) {
+  const s = sampler(flat), n = flat.length;
+  const a = [flat[0], flat[1]], b = [flat[n - 2], flat[n - 1]];
+  const y0 = yawTo(a, [flat[2], flat[3]]), y1 = yawTo([flat[n - 4], flat[n - 3]], b);
+  const pose = (d) => {
+    if (d < 0) return [a[0] + Math.cos(y0) * d, a[1] + Math.sin(y0) * d, y0];
+    if (d > s.length) { const e = d - s.length; return [b[0] + Math.cos(y1) * e, b[1] + Math.sin(y1) * e, y1]; }
+    return [...s.at(d), yawTo(s.at(Math.max(0, d - 1)), s.at(Math.min(s.length, d + 1)))];
+  };
+  return { length: s.length, pose };
+}
+
 /* ==========================================================================
    1인칭 카메라
    ========================================================================== */
@@ -121,12 +136,40 @@ function walk(path, d) {
   return { x: p[0], z: p[1], yaw: Number.isFinite(yaw) ? yaw : 0 };
 }
 
-const STILLS = [0.02, 0.17, 0.3, 0.45, 0.56, 0.7, 0.82, 0.92, 1];
+// 지하철에서 올라와 400번 버스를 타고, 도서관 입구에서 가운데 문으로 내린 뒤 버스가 떠남 (진행률)
+const BUS = { show: 0.752, close: 0.764, go: 0.771, stop: 0.803, out: 0.82, leave: 0.832, gone: 0.875 };
+const busPose = { x: 0, z: 0, yaw: 0, show: false, inside: false, doors: 0, arriving: false };
+function busState(p) {
+  const R = world.bus, b = paths.bus;
+  let d = lerp(-R.CAM.z, b.length - R.DOOR.z, smooth(BUS.go, BUS.stop, p));
+  if (p > BUS.leave) d += 240 * Math.pow(smooth(BUS.leave, BUS.gone, p), 2);
+  [busPose.x, busPose.z, busPose.yaw] = b.pose(d);
+  busPose.show = p > BUS.show && p < BUS.gone;
+  busPose.inside = p < BUS.out;
+  busPose.doors = Math.max(1 - smooth(BUS.close, BUS.go, p), smooth(BUS.stop, BUS.stop + 0.004, p) * (1 - smooth(BUS.out + 0.002, BUS.leave, p)));
+  busPose.arriving = p > 0.79 && p < BUS.out;
+  return busPose;
+}
+
+// 하차 동선: 통로 → 가운데 문 → 보도 → 걷기 시작점
+function setupAlight(w3Start) {
+  const R = world.bus, b = paths.bus;
+  const [x, z, yaw] = b.pose(b.length - R.DOOR.z);
+  const at = { x, z, yaw };
+  const pts = [R.toWorld(at, R.CAM.x, R.CAM.z), R.toWorld(at, -0.55, 0.05), R.toWorld(at, -1.3, R.DOOR.z), R.toWorld(at, -2.5, 0.6), w3Start];
+  let door = 0;
+  for (let i = 1; i <= 2; i++) door += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  paths.alight = sampler(pts.flat());
+  paths.alightDoor = door / paths.alight.length;
+  paths.rideYaw = yaw;
+}
+
+const STILLS = [0.02, 0.17, 0.3, 0.45, 0.56, 0.7, 0.845, 0.92, 1];
 const cam = { x: 0, z: 0, yaw: 0, d1: 0, d3: 0 };
 function cameraState(p) {
   const { w1, w2, w3 } = paths;
   const bis = world.city.pois.bis;
-  let s, pitch = 0, bob = 0;
+  let s, pitch = 0, bob = 0, eye = EYE, shake = 0;
   cam.d1 = 0; cam.d3 = 0;
   if (p < 0.33) {
     s = walk(w1, 0);
@@ -140,15 +183,37 @@ function cameraState(p) {
     const toBis = yawTo([s.x, s.z], [bis.x, bis.z]);
     s.yaw = angLerp(s.yaw, toBis, smooth(0.5, 0.535, p) * (1 - smooth(0.585, 0.62, p) * 0.6));
     pitch = 8 * DEG * smooth(0.5, 0.535, p) * (1 - smooth(0.585, 0.62, p));
-  } else if (p < 0.755) {
+  } else if (p < 0.757) {
     const d = smooth(0.62, 0.735, p) * w2.length;
     s = walk(w2, d); bob = d + 400;
-  } else if (p < 0.9) {
-    const d = smooth(0.775, 0.9, p) * w3.length;
+  } else if (p < BUS.stop) {
+    // 버스 안: 통로에 서서 앞을 봄. 엔진 떨림과 가감속에 따라 몸이 살짝 흔들림
+    const B = busState(p), R = world.bus, m = R.motion;
+    const [x, z] = R.toWorld(B, R.CAM.x, R.CAM.z);
+    s = { x, z, yaw: B.yaw + 0.1 };
+    eye = R.CAM.y; bob = 600;
+    const sp = Math.min(1, m.speed / 12);
+    pitch = -0.03 + clamp(-m.accel * 0.0025, -0.03, 0.03);
+    if (!reduceMotion) {
+      shake = Math.sin(time * 37) * 0.0022 * (0.35 + sp) + Math.sin(time * 0.9) * 0.012 * sp;
+      s.yaw += Math.sin(time * 0.7) * 0.012 * sp;
+    }
+  } else if (p < BUS.out) {
+    // 하차: 문 쪽으로 돌아서 내려와 걷는 방향으로
+    const A = paths.alight, t = smooth(BUS.stop, BUS.out, p);
+    const d = A.length * smooth(0.12, 1, t);
+    const [x, z] = A.at(d);
+    const travel = yawTo([x, z], A.at(Math.min(A.length, d + 1.2)));
+    const yaw = angLerp(angLerp(paths.rideYaw + 0.1, travel, smooth(0, 0.3, t)), walk(w3, 0).yaw, smooth(0.7, 1, t));
+    s = { x, z, yaw };
+    eye = lerp(world.bus.CAM.y, EYE, smooth(paths.alightDoor - 0.03, paths.alightDoor + 0.1, d / A.length));
+    bob = d + 700;
+  } else if (p < 0.905) {
+    const d = smooth(BUS.out, 0.905, p) * w3.length;
     s = walk(w3, d); bob = d + 900; cam.d3 = d;
   } else {
     s = walk(w3, w3.length); cam.d3 = w3.length;
-    pitch = 4 * DEG * smooth(0.9, 0.98, p);
+    pitch = 4 * DEG * smooth(0.905, 0.98, p);
   }
   // 도착 무렵에는 길 끝을 바라봄 (아침 해가 낮게 떠 있으면 해 쪽으로)
   if (p > 0.86) {
@@ -157,6 +222,7 @@ function cameraState(p) {
   }
   s.pitch = pitch;
   s.bob = bob;
+  s.eye = eye + shake;
   return s;
 }
 
@@ -166,7 +232,7 @@ function placeCamera(p, dt) {
   const moving = Math.abs(s.bob - lastBob) > 0.01;
   lastBob = s.bob;
   bobAmp = lerp(bobAmp, moving && !reduceMotion ? 1 : 0, Math.min(1, dt * 4));
-  const y = EYE + Math.sin(s.bob * 2.6) * 0.028 * bobAmp;
+  const y = s.eye + Math.sin(s.bob * 2.6) * 0.028 * bobAmp;
   handBob = Math.sin(s.bob * 2.6 + 0.6) * 5 * bobAmp;
   camera.position.set(s.x, y, s.z);
   cam.x = s.x; cam.z = s.z; cam.yaw = s.yaw;
@@ -179,7 +245,7 @@ function placeCamera(p, dt) {
    ========================================================================== */
 const sunDir = new Vector3();
 let bisDelayed = null;
-function updateWorld(p, time, dt) {
+function updateWorld(p, cp, time, dt) {
   scene.fog.color.copy(tod.fog);
   scene.fog.density = tod.density;
   hemi.color.copy(tod.hemiSky);
@@ -210,7 +276,7 @@ function updateWorld(p, time, dt) {
   rb.w1.setProgress(smooth(0.24, 0.31, p));
   rb.busA.setProgress(smooth(0.27, 0.33, p));
   rb.w2.setProgress(smooth(0.6, 0.645, p));
-  rb.w3.setProgress(p > 0.76 ? smooth(0.775, 0.81, p) : 0);
+  rb.w3.setProgress(p > 0.785 ? smooth(0.79, 0.83, p) : 0);
   const delay = smooth(0.54, 0.575, p);
   rb.busA.mat.color.set("#e6b54a").lerp(new Color("#ff8a1e"), delay);
   rb.busA.mat.opacity = lerp(1, 0.28, delay) * (1 - smooth(0.7, 0.74, p));
@@ -218,6 +284,7 @@ function updateWorld(p, time, dt) {
   const delayed = p > 0.535;
   if (delayed !== bisDelayed) { bisDelayed = delayed; world.setBis(delayed); }
   world.update(reduceMotion ? 0 : time, reduceMotion ? 0 : dt, tod);
+  world.bus.update(busState(cp), reduceMotion ? 0 : time, dt, tod);
 }
 
 /* ==========================================================================
@@ -241,13 +308,17 @@ let introIn = reduceMotion ? 1 : 0;
 
 const HUD = [
   [0.08, "출발 전"], [0.22, "조건 말하는 중"], [0.33, "경로 고르는 중"], [0.5, "정류장으로 걷는 중"],
-  [0.6, "버스 지연 감지"], [0.735, "대안 경로로 이동"], [0.775, "지하철 · 400번 이동 중"], [0.87, "도서관으로 걷는 중"], [0.935, "도착"], [1.1, ""]
+  [0.6, "버스 지연 감지"], [0.735, "대안 경로로 이동"], [0.762, "지하철 2정거장 이동 중"], [0.818, "400번 버스 타고 가는 중"],
+  [0.87, "도서관으로 걷는 중"], [0.935, "도착"], [1.1, ""]
 ];
 const hud = $(".hud");
 const PHONE = [
   [0.08, "lock"], [0.22, "voice"], [0.33, "understood"], [0.5, "nav"], [0.6, "alert"],
-  [0.735, "compare"], [0.775, null], [0.87, "trust"], [0.935, "arrived"], [1.1, null]
+  [0.735, "compare"], [0.764, null], [0.82, "ride"], [0.87, "trust"], [0.935, "arrived"], [1.1, null]
 ];
+const rideLeft = $("#ride-left");
+const rideTxt = $("#ride-txt");
+const metroStops = $$(".metro__st");
 const NAV_STEPS = [["골목 끝에서 오른쪽", "ic-turn"], ["큰길 앞에서 오른쪽", "ic-turn"], ["횡단보도 건너기", "ic-cross"], ["횡단보도 건너기", "ic-cross"], ["정류장까지 직진", "ic-up"]];
 let navInfo = null;
 function setupNav() {
@@ -286,6 +357,7 @@ function phoneView(s) {
       segs.push({ pts: M.w3, kind: "walk" });
       return { mode: "overview", fit: [...M.w2, ...M.sub, ...(M.bus2 || []), ...M.w3, M.dest], top: 0.16, bottom: 0.34, dest: M.dest, user, segments: segs };
     }
+    case "ride": return follow(1.7, [...(M.bus2 ? [{ pts: M.bus2, kind: "bus", label: "400" }] : []), { pts: M.w3, kind: "walk" }], { dest: M.dest });
     case "trust": return follow(2.5, [{ pts: M.w3, kind: "walk", dim: true }, { pts: paths.w3.rest(cam.d3), kind: "walk" }], { dest: M.dest });
     case "arrived": return follow(3, [{ pts: M.w3, kind: "walk", dim: true }], { dest: M.dest, anchorY: 0.4 });
     default: return null;
@@ -308,6 +380,13 @@ function updatePhone(p) {
     navIcon.setAttribute("href", "#" + icon);
     navDist.textContent = String(toTurn);
     navRem.textContent = String(Math.max(0, Math.round(navInfo.total - d)));
+  }
+  if (s === "ride") {
+    const f = smooth(BUS.go, BUS.stop, p);
+    const [a, b] = p > BUS.stop - 0.004 ? ["이번 정류장에서 내려요", "가운데 문 쪽에 계단이 없어요"]
+      : f > 0.55 ? ["다음 정류장에서 내려요", "400번 · 도서관 입구 하차"]
+      : ["2정거장 뒤 내려요", "400번 · 내릴 때가 되면 알려 드려요"];
+    if (rideLeft.textContent !== a) { rideLeft.textContent = a; rideTxt.textContent = b; }
   }
   if (s === "trust") nav3.textContent = String(Math.max(0, Math.round(paths.w3.length - cam.d3)));
   if (phoneMap && s && s !== "lock") {
@@ -341,9 +420,15 @@ function updateChapters(p) {
     if (typeMsg.textContent.length !== count) typeMsg.textContent = typeText.slice(0, count);
   }
   updatePhone(p);
-  const vv = smooth(0.725, 0.745, p) * (1 - smooth(0.765, 0.785, p));
+  // 지하철 구간: 화면을 덮고 노선도 위로 열차가 2정거장 이동
+  const vv = smooth(0.728, 0.742, p) * (1 - smooth(0.757, 0.767, p));
   veil.style.opacity = vv.toFixed(3);
-  if (tod.fog) veil.style.setProperty("--veil", "#" + tod.fog.getHexString());
+  veil.classList.toggle("is-on", vv > 0.001);
+  if (vv > 0.001) {
+    const sp = smooth(0.741, 0.756, p);
+    veil.style.setProperty("--sp", sp.toFixed(4));
+    metroStops.forEach((el) => el.classList.toggle("is-past", sp >= Number(el.dataset.at) - 0.001));
+  }
   root.dataset.tod = tod.night > 0.5 ? "night" : "day";
   railFill.style.transform = `scaleY(${p.toFixed(4)})`;
   const m = tripMin(p);
@@ -356,7 +441,8 @@ function updateChapters(p) {
 /* ==========================================================================
    스페이스바: 다음 단계로 천천히 이동 (Shift+스페이스는 이전 단계)
    ========================================================================== */
-const STOPS = [0, 0.16, 0.29, 0.44, 0.56, 0.68, 0.83, 0.905, 1];
+// 버스에 탄 직후(0.769) · 정류장에 선 순간(0.805)에도 한 번씩 멈춤
+const STOPS = [0, 0.16, 0.29, 0.44, 0.56, 0.68, 0.769, 0.805, 0.845, 0.91, 1];
 let stepAnim = null;
 const easeInOut = (t) => 0.5 - Math.cos(Math.PI * t) / 2;
 function stepTo(dir) {
@@ -423,7 +509,7 @@ function readScroll() {
 function cameraP(p) {
   if (!reduceMotion) return p;
   const i = chapters.findIndex((ch) => p >= ch.a && p < ch.b);
-  return STILLS[i < 0 ? STILLS.length - 1 : i];
+  return i < 0 ? 0.785 : STILLS[i]; // 장 사이(지하철 · 버스 구간)는 버스 안 장면
 }
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
@@ -446,13 +532,14 @@ function frame(now) {
   current = reduceMotion ? target : current + (target - current) * (1 - Math.pow(0.045, dt));
   if (Math.abs(target - current) < 0.00004) current = target;
   skyAt((START_MIN + tripMin(current)) / 60, tod);
+  const cp = cameraP(current);
   if (renderer && world) {
-    placeCamera(cameraP(current), dt);
+    placeCamera(cp, dt);
     camera.updateMatrixWorld();
   }
   updateChapters(current);
   if (renderer && world) {
-    updateWorld(current, time, dt);
+    updateWorld(current, cp, time, dt);
     updateLabels(current);
     renderer.render(scene, camera);
   }
@@ -477,6 +564,58 @@ function setupDownload() {
     note.classList.add("is-warn");
   });
 }
+/* ==========================================================================
+   배경음악: 자동 재생이 막히면 첫 클릭·키 입력 때 시작, 머리말 버튼으로 끄고 켬
+   ========================================================================== */
+function setupMusic() {
+  const audio = $("#bgm"), btn = $("#snd");
+  if (!audio || !btn) return;
+  const VOL = 0.45;
+  let wanted = true; // 방문자가 끄기 전까지는 켜 둠
+  let fade = 0;
+  // 켤 때만 1.6초 동안 서서히 키움 (끌 때는 바로 멈춤)
+  const fadeIn = () => {
+    clearInterval(fade);
+    const t0 = performance.now();
+    fade = setInterval(() => {
+      const k = clamp((performance.now() - t0) / 1600);
+      audio.volume = VOL * k;
+      if (k >= 1) clearInterval(fade);
+    }, 40);
+  };
+  const play = () => {
+    if (!audio.paused) return;
+    audio.volume = 0;
+    audio.play().then(fadeIn).catch(() => {});
+  };
+  const pause = () => { clearInterval(fade); audio.pause(); };
+  const render = () => {
+    const on = !audio.paused;
+    btn.classList.toggle("is-on", on);
+    btn.setAttribute("aria-pressed", String(on));
+    btn.setAttribute("aria-label", on ? "배경음악 끄기" : "배경음악 켜기");
+    $(".snd__txt", btn).textContent = on ? "음악 끄기" : "음악 켜기";
+  };
+  audio.addEventListener("play", render);
+  audio.addEventListener("pause", render);
+  btn.addEventListener("click", () => {
+    wanted = audio.paused;
+    if (wanted) play(); else pause();
+  });
+  const firstGesture = (e) => {
+    if (e.target.closest && e.target.closest("#snd")) return;
+    ["pointerdown", "keydown", "touchend"].forEach((ev) => window.removeEventListener(ev, firstGesture, true));
+    if (wanted) play();
+  };
+  ["pointerdown", "keydown", "touchend"].forEach((ev) => window.addEventListener(ev, firstGesture, true));
+  // 다른 탭으로 가면 멈췄다가 돌아오면 다시
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) pause();
+    else if (wanted && audio.currentTime > 0) play();
+  });
+  play();
+}
+
 document.addEventListener("focusin", (e) => {
   const ch = e.target.closest && e.target.closest(".ch");
   if (!ch || ch.classList.contains("is-on")) return;
@@ -514,6 +653,7 @@ async function init() {
   window.addEventListener("pageshow", (e) => { if (e.persisted) toStart(); });
   fillTimes();
   setupDownload();
+  setupMusic();
   readScroll();
   current = target;
   resize();
@@ -523,10 +663,16 @@ async function init() {
   start();
   if (!renderer) return;
   try { await document.fonts.load(`800 40px ${FONT}`); } catch (e) { /* 기본 글꼴 사용 */ }
-  const [city, icon] = await Promise.all([loadCity(), loadImage("assets/dux-icon-256.png")]);
+  const [city, icon] = await Promise.all([loadCity(), loadImage("assets/icons/dux-icon-256.png")]);
   const built = await buildCity(city, scene, { fontFamily: FONT, mobile: isMobile, patchFog, icon });
   world = Object.assign(built, { city });
   paths = { w1: sampler(city.route.w1), w2: sampler(city.route.w2), w3: sampler(city.route.w3) };
+  // 400번 버스: busAlt 의 마지막 점은 내려서 걷기 시작하는 곳
+  const R = city.route, w3Start = R.w3.slice(0, 2);
+  const busFlat = R.busAlt && R.busAlt.length >= 6 ? R.busAlt.slice(0, -2) : [w3Start[0] - 128, w3Start[1] - 5.6, w3Start[0] - 4, w3Start[1] - 5.6];
+  paths.bus = busPath(busFlat);
+  world.bus = createBusRide(scene, { fontFamily: FONT, patchFog });
+  setupAlight(w3Start);
   setupLabels();
   setupNav();
   setupPhoneMap();

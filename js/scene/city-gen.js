@@ -1,5 +1,5 @@
 /**
- * DUX v4 — 서울 주거지 거리 배치 생성기
+ * DUX — 서울 주거지 거리 배치 생성기
  *
  * 출력 형식은 tools/osm_to_city.py 가 OpenStreetMap 데이터로 만드는 data/city.json 과 같습니다.
  *   roads:     { k: "main" | "sec" | "alley", w: 차도 폭, sw: 보도 폭, pts: [x, z, x, z, ...] }

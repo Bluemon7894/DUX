@@ -1,5 +1,5 @@
 /**
- * DUX v4 — 거리 배치 데이터(city-gen.js 또는 data/city.json)를 3D 장면으로 세웁니다.
+ * DUX — 거리 배치 데이터(city-gen.js 또는 data/city.json)를 3D 장면으로 세웁니다.
  * 같은 재질은 한 덩어리로 합치고, 반복 소품은 인스턴싱해서 그리기 호출 수를 줄입니다.
  */
 import {
@@ -7,7 +7,7 @@ import {
   BoxGeometry, CylinderGeometry, IcosahedronGeometry, PlaneGeometry,
   MeshLambertMaterial, MeshBasicMaterial, PointsMaterial, LineBasicMaterial, Points, LineSegments,
   ShapeUtils, Vector2, AdditiveBlending, DoubleSide
-} from "./vendor/three.min.js";
+} from "../../vendor/three.min.js";
 import {
   ATLAS, facadeTextures, shopTextures, SHOP_VARIANTS, signTextures, SIGN_COUNT, LIBRARY_SIGN, VSIGN_COUNT,
   asphaltTexture, pavingTexture, bisCanvas, glowTexture, flowTexture, labelTexture, adTexture

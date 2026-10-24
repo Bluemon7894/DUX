@@ -1,5 +1,5 @@
 /* ==========================================================================
-   DUX v4 — 1인칭 거리 · 황금 / 검정
+   DUX — 1인칭 거리 · 황금 / 검정
    [data-tod="night"] 해가 진 뒤: 밝은 글자, 어두운 패널
    [data-tod="day"]   해가 있을 때: 검은 글자, 밝은 패널
    (방문자의 실제 현재 시각으로 정해짐)
@@ -62,8 +62,34 @@ a { color: inherit; }
 .stage__fallback { position: absolute; inset: 0; display: none; background: linear-gradient(180deg, #0a0d18 0%, #2a2a38 60%, #a08868 100%); }
 .no-webgl .stage__fallback, html:not(.js) .stage__fallback { display: block; }
 
-.veil { position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0; display: grid; place-items: center; background: var(--veil, #b8a88a); }
-.veil p { padding: 12px 18px; background: var(--panel); color: var(--fg); font-size: 1rem; font-weight: 650; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+/* 지하철 구간: 어두운 터널, 스쳐 가는 불빛, 노선도 위를 움직이는 열차 */
+.veil { position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0; display: grid; place-items: center; overflow: hidden; background: radial-gradient(120% 80% at 50% 50%, #1a1610 0%, #0b0a08 72%); color: #f4ecdb; }
+.veil__streaks {
+  position: absolute; inset: 0; opacity: 0.7;
+  background:
+    linear-gradient(90deg, transparent 46%, rgba(255, 226, 160, 0.55) 50%, transparent 54%) 0 30% / 420px 2px repeat-x,
+    linear-gradient(90deg, transparent 40%, rgba(255, 226, 160, 0.3) 50%, transparent 60%) 0 72% / 300px 1px repeat-x,
+    linear-gradient(90deg, transparent 45%, rgba(230, 181, 74, 0.45) 50%, transparent 55%) 0 20% / 560px 1px repeat-x,
+    linear-gradient(90deg, transparent 44%, rgba(255, 240, 210, 0.3) 50%, transparent 56%) 0 84% / 360px 2px repeat-x;
+  animation: tunnel 0.8s linear infinite paused;
+}
+.veil.is-on .veil__streaks { animation-play-state: running; }
+@keyframes tunnel { to { background-position: -420px 30%, -300px 72%, -560px 20%, -360px 84%; } }
+.metro { position: relative; width: min(560px, 84vw); display: grid; gap: 40px; }
+.metro__cap { justify-self: center; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border: 1px solid rgba(230, 181, 74, 0.4); background: rgba(12, 12, 14, 0.72); font-size: 1rem; font-weight: 700; }
+.metro__cap svg { width: 20px; height: 20px; color: var(--gold-hi); }
+.metro__line { position: relative; height: 4px; margin: 0 14px 44px; background: rgba(244, 236, 219, 0.18); }
+.metro__line::before { content: ""; position: absolute; inset: 0; background: var(--gold-hi); transform-origin: left; transform: scaleX(var(--sp, 0)); }
+.metro__st { position: absolute; left: calc(var(--at) * 100%); top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; border: 3px solid rgba(244, 236, 219, 0.4); background: #0b0a08; transition: background 0.3s ease, border-color 0.3s ease; }
+.metro__st b { position: absolute; top: 26px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 0.84rem; font-weight: 650; color: rgba(244, 236, 219, 0.6); transition: color 0.3s ease; }
+.metro__st:first-child b { left: -6px; transform: none; }
+.metro__st:nth-child(3) b { left: auto; right: -6px; transform: none; }
+.metro__st.is-past { border-color: var(--gold-hi); background: var(--gold-hi); }
+.metro__st.is-past b { color: #f4ecdb; }
+.metro__train { position: absolute; left: calc(var(--sp, 0) * 100%); top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; display: grid; place-items: center; border-radius: 13px; background: var(--gold-hi); color: var(--ink); box-shadow: 0 0 0 6px rgba(230, 181, 74, 0.16), 0 0 34px rgba(230, 181, 74, 0.5); }
+.metro__train svg { width: 26px; height: 26px; animation: rock 0.32s ease-in-out infinite alternate paused; }
+.veil.is-on .metro__train svg { animation-play-state: running; }
+@keyframes rock { from { transform: translateY(-1px); } to { transform: translateY(1px); } }
 
 .grain {
   position: fixed; inset: 0; z-index: 8; pointer-events: none;
@@ -93,14 +119,21 @@ a { color: inherit; }
 .hd__brand img { width: 32px; height: 32px; border-radius: 9px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25); }
 .hd__sub { font-size: 0.86rem; font-weight: 650; letter-spacing: -0.01em; color: var(--fg-2); }
 @media (max-width: 520px) { .hd__sub { font-size: 0.72rem; } .hd__brand { gap: 6px; } }
-.hd__nav { display: flex; align-items: center; gap: clamp(14px, 2.4vw, 34px); font-size: 0.95rem; font-weight: 650; }
-.hd__nav a { text-decoration: none; position: relative; padding: 6px 0; }
-.hd__nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease; }
-.hd__nav a:hover::after { transform: scaleX(1); }
-.hd__nav .hd__dl { padding: 8px 16px; background: var(--gold-hi); color: var(--ink); }
-.hd__nav .hd__dl::after { display: none; }
-.hd__nav .hd__dl:hover { background: #f3c860; }
-@media (max-width: 1180px) { .hd__nav a:not(.hd__dl) { display: none; } }
+.hd__nav { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 650; }
+.hd__dl { padding: 8px 16px; background: var(--gold-hi); color: var(--ink); text-decoration: none; }
+.hd__dl:hover { background: #f3c860; }
+
+/* 배경음악 켜기·끄기 */
+.snd { display: inline-flex; align-items: center; gap: 8px; height: 37px; padding: 0 13px; border: 1px solid var(--rule); background: var(--panel); color: var(--fg); font: inherit; font-size: 0.88rem; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: border-color 0.3s ease; }
+.snd:hover { border-color: var(--gold-hi); }
+.snd__bars { display: inline-flex; align-items: flex-end; gap: 2px; width: 14px; height: 12px; }
+.snd__bars i { flex: 1; height: 3px; background: currentColor; opacity: 0.7; }
+.snd.is-on .snd__bars i { background: var(--gold-hi); opacity: 1; animation: snd-eq 0.9s ease-in-out infinite alternate; }
+.snd.is-on .snd__bars i:nth-child(2) { animation-delay: -0.35s; }
+.snd.is-on .snd__bars i:nth-child(3) { animation-delay: -0.6s; }
+.snd.is-on .snd__bars i:nth-child(4) { animation-delay: -0.15s; }
+@keyframes snd-eq { from { height: 3px; } to { height: 12px; } }
+@media (max-width: 520px) { .snd { padding: 0 11px; } .snd__txt { display: none; } }
 
 .rail { position: fixed; right: 22px; top: 22vh; height: 56vh; width: 2px; z-index: 20; background: var(--rule); }
 .rail i { position: absolute; inset: 0; background: var(--gold-hi); transform-origin: top; transform: scaleY(0); }
@@ -118,8 +151,8 @@ a { color: inherit; }
 .js .ch.is-on a { pointer-events: auto; }
 html:not(.js) .ch { position: relative; min-height: 100vh; padding: 120px var(--pad) 80px; }
 html:not(.js) .track, html:not(.js) .hand { display: none; }
-.track { position: relative; height: 3000vh; }
-.anchor { position: absolute; left: 0; top: calc(var(--p) * 2900vh); width: 1px; height: 1px; }
+.track { position: relative; height: 3300vh; }
+.anchor { position: absolute; left: 0; top: calc(var(--p) * 3200vh); width: 1px; height: 1px; }
 
 .eyebrow { font-size: 0.98rem; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
 .title { font-size: clamp(2.8rem, 6.6vw, 6rem); font-weight: 800; line-height: 1.08; letter-spacing: -0.045em; }
@@ -248,7 +281,7 @@ html:not(.js) .track, html:not(.js) .hand { display: none; }
 .ps { position: absolute; inset: 0; padding: 2.9em 0.75em 0.8em; display: flex; flex-direction: column; gap: 0.6em; opacity: 0; transform: translateY(0.6em); transition: opacity 0.4s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
 .hand[data-s="lock"] [data-ps="lock"], .hand[data-s="voice"] [data-ps="voice"], .hand[data-s="understood"] [data-ps="understood"],
 .hand[data-s="nav"] [data-ps="nav"], .hand[data-s="alert"] [data-ps="alert"], .hand[data-s="compare"] [data-ps="compare"],
-.hand[data-s="trust"] [data-ps="trust"], .hand[data-s="arrived"] [data-ps="arrived"] { opacity: 1; transform: none; }
+.hand[data-s="ride"] [data-ps="ride"], .hand[data-s="trust"] [data-ps="trust"], .hand[data-s="arrived"] [data-ps="arrived"] { opacity: 1; transform: none; }
 
 /* 공통 부품 */
 .sheet { margin-top: auto; padding: 1em 0.95em 1.05em; border-radius: 1.3em; background: rgba(22, 21, 17, 0.97); box-shadow: 0 -0.4em 1.6em rgba(0, 0, 0, 0.45); display: flex; flex-direction: column; gap: 0.6em; }
@@ -317,6 +350,8 @@ html:not(.js) .track, html:not(.js) .hand { display: none; }
 .turn--wait { background: rgba(22, 21, 17, 0.96); color: #f4ecdb; }
 .turn--wait .turn__ic { background: #3d7be0; color: #fff; }
 .turn--wait .turn__ic svg { fill: none; }
+.turn--ride .turn__ic { background: #2f6fd0; color: #fff; }
+.turn--ride .turn__dist { font-size: 1.12em; }
 .turn__dist { font-size: 1.35em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
 .turn__dist b { font-family: var(--font); }
 .turn__txt { font-size: 0.86em; font-weight: 700; }
@@ -374,6 +409,7 @@ html:not(.js) .track, html:not(.js) .hand { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   html.js { scroll-behavior: auto; }
-  .cue i::after, .wave b, .voice__msg::after, .push { animation: none; }
+  .cue i::after, .wave b, .voice__msg::after, .push, .snd.is-on .snd__bars i, .veil__streaks, .metro__train svg { animation: none; }
+  .snd.is-on .snd__bars i { height: 8px; }
   .hand, .ps { transition: none; }
 }

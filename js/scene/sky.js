@@ -1,9 +1,9 @@
 /**
- * DUX v4 — 하늘 · 별 · 해 · 안개
+ * DUX — 하늘 · 별 · 해 · 안개
  * - 하늘은 카메라를 감싸는 구(BackSide)에 셰이더로 그립니다: 높이별 색, 해와 번짐, 별(밤), 지평선의 도시 불빛.
  * - 안개는 three.js 기본 안개를 고쳐서, 해를 향한 방향일수록 밝게 번지도록 합니다.
  */
-import { Mesh, SphereGeometry, ShaderMaterial, BackSide, Color, Vector3, ShaderChunk } from "./vendor/three.min.js";
+import { Mesh, SphereGeometry, ShaderMaterial, BackSide, Color, Vector3, ShaderChunk } from "../../vendor/three.min.js";
 
 /* ---------- 안개: 해 방향으로 번지는 빛 ---------- */
 export const fogUniforms = {

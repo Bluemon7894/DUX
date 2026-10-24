@@ -1,8 +1,8 @@
 /**
- * DUX v4 — 캔버스로 그리는 거리 텍스처
+ * DUX — 캔버스로 그리는 거리 텍스처
  * 외벽 아틀라스(8칸 × 8층), 1층 상가, 한글 간판, 노면, 버스정보안내기(BIS) 화면, 빛 번짐
  */
-import { CanvasTexture, SRGBColorSpace, RepeatWrapping } from "./vendor/three.min.js";
+import { CanvasTexture, SRGBColorSpace, RepeatWrapping } from "../../vendor/three.min.js";
 
 export const ATLAS = 8; // 외벽 아틀라스 한 변의 칸 수 (가로 = 창 칸, 세로 = 층)
 
@@ -267,6 +267,29 @@ export function bisCanvas(fontFamily) {
       g.fillStyle = "#ffcc33"; g.textAlign = "left"; g.fillText(no, 22, y);
       g.fillStyle = col; g.textAlign = "right"; g.fillText(st, 490, y);
     });
+    t.needsUpdate = true;
+  };
+  draw(false);
+  return { texture: t, draw };
+}
+
+/* ---------- 버스 안 정류장 안내 화면 (비율 0.72 : 0.2) ---------- */
+export function busScreenCanvas(fontFamily, stopName) {
+  const [c, g] = canvas(720, 200);
+  const t = tex(c, false);
+  const draw = (arriving) => {
+    g.fillStyle = "#05080f"; g.fillRect(0, 0, 720, 200);
+    g.fillStyle = "#0f1a2e"; g.fillRect(0, 0, 720, 54);
+    g.textBaseline = "middle";
+    // 노선 번호
+    g.fillStyle = "#2f6fd0"; g.beginPath(); g.roundRect(18, 10, 92, 34, 8); g.fill();
+    g.fillStyle = "#ffffff"; g.font = `800 26px ${fontFamily}`; g.textAlign = "center"; g.fillText("400", 64, 28);
+    g.textAlign = "left"; g.font = `700 24px ${fontFamily}`;
+    g.fillStyle = arriving ? "#ff6a3d" : "#ffb000";
+    g.fillText(arriving ? "이번 정류장" : "다음 정류장", 128, 28);
+    if (arriving) { g.fillStyle = "#ff3b2a"; g.beginPath(); g.arc(690, 27, 9, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = "#f4f6fa"; g.font = `800 70px ${fontFamily}`;
+    g.fillText(stopName, 22, 128, 676);
     t.needsUpdate = true;
   };
   draw(false);

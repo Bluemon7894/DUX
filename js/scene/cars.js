@@ -1,12 +1,12 @@
 /**
- * DUX v4 — 차량 (세단, SUV, 해치백, 택시, 1톤 트럭, 시내버스)
+ * DUX — 차량 (세단, SUV, 해치백, 택시, 1톤 트럭, 시내버스)
  * 옆면 실루엣을 폭만큼 뽑아내 차체를 만들고, 창·바퀴·등화·번호판을 부품으로 얹습니다.
  * 로컬 좌표: x = 폭, y = 위, z = 길이 (앞 = +z)
  */
 import {
   BufferGeometry, Float32BufferAttribute, InstancedMesh, Object3D, Color,
   CylinderGeometry, MeshLambertMaterial, MeshBasicMaterial, ShapeUtils, Vector2
-} from "./vendor/three.min.js";
+} from "../../vendor/three.min.js";
 
 class Geo {
   constructor() { this.p = []; this.n = []; this.c = []; }
@@ -184,7 +184,7 @@ export function bodyColor(type, r) {
 
 /**
  * 차량 묶음을 장면에 추가
- * items: [{ type, x, z, ang, color }]   반환: { set(i, x, z, ang), commit(), setNight(n) }
+ * items: [{ type, x, z, ang, color }]   반환: { set(i, x, z, ang), commit(), setNight(n), meshes }
  */
 export function createFleet(scene, items, patchFog) {
   const mats = {
@@ -226,7 +226,7 @@ export function createFleet(scene, items, patchFog) {
   commit();
   if (patchFog) Object.values(mats).forEach(patchFog);
   return {
-    set, commit,
+    set, commit, meshes,
     half: (i) => slots[i].half,
     setNight(n) {
       mats.lit.color.setScalar(0.55 + 0.45 * n);
