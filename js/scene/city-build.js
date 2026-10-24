@@ -10,7 +10,7 @@ import {
 } from "../../vendor/three.min.js";
 import {
   ATLAS, facadeTextures, shopTextures, SHOP_VARIANTS, signTextures, SIGN_COUNT, LIBRARY_SIGN, VSIGN_COUNT,
-  asphaltTexture, pavingTexture, bisCanvas, glowTexture, flowTexture, labelTexture, adTexture, noParkingTexture
+  asphaltTexture, pavingTexture, bisCanvas, glowTexture, flowTexture, labelTexture, adTexture, noParkingTexture, villaPlateTexture
 } from "./textures.js";
 import { rng } from "./city-gen.js";
 import { createFleet, bodyColor } from "./cars.js";
@@ -42,6 +42,34 @@ class Acc {
 }
 
 const toPts = (flat) => { const o = []; for (let i = 0; i < flat.length; i += 2) o.push([flat[i], flat[i + 1]]); return o; };
+
+/* 법선 쪽에서 보이도록 감김 방향을 맞춰 넣는 사각형 */
+const UV0 = [[0, 0], [0, 0], [0, 0], [0, 0]];
+function quadN(acc, a, b, c, d, n, col, uvs = UV0) {
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  const dot = (uy * vz - uz * vy) * n[0] + (uz * vx - ux * vz) * n[1] + (ux * vy - uy * vx) * n[2];
+  if (dot < 0) acc.quad(a, d, c, b, n, [uvs[0], uvs[3], uvs[2], uvs[1]], col);
+  else acc.quad(a, b, c, d, n, uvs, col);
+}
+/*
+ * 벽에 붙는 상자(띠, 창턱, 난간벽, 배관 …)
+ *  o = [x, z] 벽선 위 시작점, t = 벽을 따라가는 방향, n = 바깥 법선
+ *  len = t 방향 길이, y0·h = 높이, dep = n 방향 두께
+ *  opts.ends = 양 끝면, opts.back = 벽 쪽 면 (떨어져 서 있는 상자일 때)
+ */
+function obox(acc, o, t, n, len, y0, h, dep, col, opts = {}) {
+  const P = (a, b, y) => [o[0] + t[0] * a + n[0] * b, y, o[1] + t[1] * a + n[1] * b];
+  const y1 = y0 + h, N = [n[0], 0, n[1]];
+  quadN(acc, P(0, dep, y0), P(len, dep, y0), P(len, dep, y1), P(0, dep, y1), N, col);
+  quadN(acc, P(0, 0, y1), P(len, 0, y1), P(len, dep, y1), P(0, dep, y1), [0, 1, 0], col);
+  quadN(acc, P(0, 0, y0), P(len, 0, y0), P(len, dep, y0), P(0, dep, y0), [0, -1, 0], col);
+  if (opts.ends !== false) {
+    quadN(acc, P(0, 0, y0), P(0, dep, y0), P(0, dep, y1), P(0, 0, y1), [-t[0], 0, -t[1]], col);
+    quadN(acc, P(len, 0, y0), P(len, dep, y0), P(len, dep, y1), P(len, 0, y1), [t[0], 0, t[1]], col);
+  }
+  if (opts.back) quadN(acc, P(0, 0, y0), P(len, 0, y0), P(len, 0, y1), P(0, 0, y1), [-n[0], 0, -n[1]], col);
+}
+
 /* 점 (x, z) 가 폴리라인들 중 하나와 d 보다 가까운지 */
 function nearLines(lines, x, z, d) {
   return lines.some((pts) => {
@@ -249,6 +277,106 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
   };
   const vsignCell = (idx) => [(idx * 128) / 1024 + 0.003, 0.004, ((idx + 1) * 128) / 1024 - 0.003, 0.5 - 0.004];
 
+  /* ---------- 건물 디테일: 층 띠 · 창턱 · 발코니 · 난간벽 · 옥탑 · 현관 · 이름판 · 계단실 창 · 가스관 ---------- */
+  const rd = rng(9090);                 // 디테일 전용 (기존 건물 배치의 무작위 순서를 바꾸지 않도록)
+  const trimAcc = new Acc();            // 조명을 받는 덧붙임 (정점 색)
+  const glowAcc = new Acc();            // 밤에 빛나는 계단실 창 · 현관등
+  const plateAcc = new Acc();           // 빌라 이름판
+  const plates = villaPlateTexture(fontFamily);
+  const entranceLights = [], entrancePools = [];
+  const routeLines = ["w1", "w2", "w3", "busAlt"].filter((k) => city.route && city.route[k]).map((k) => toPts(city.route[k]));
+  const nearRoute = (x, z, d) => routeLines.length > 0 && nearLines(routeLines, x, z, d);
+  const C_STONE = new Color("#6c675f"), C_CAP = new Color("#a39e95"), C_SILL = new Color("#d4d0c7"), C_RAIL = new Color("#cfccc6");
+  const C_GAS = new Color("#d6a313"), C_PIPE = new Color("#8b8e92"), C_GLASS = new Color("#20262c"), C_FRAME = new Color("#b9b6ae");
+  const C_LAMP = new Color("#fff0d2"), C_STAIR = new Color("#f2c98f");
+  const resLayout = facade.res.layout;
+
+  // 벽 한 변에 덧붙이는 것들 (o = 시작 꼭짓점, per0 = 둘레에서 이 변이 시작하는 거리)
+  function edgeDetail(b, kind, isFront, x1, z1, L, tx, tz, nx, nz, per0, floorH, uOff, vOff, tint, nearCam) {
+    const o = [x1, z1], t = [tx, tz], n = [nx, nz], h = b.h;
+    const shopFront = isFront && b.shop;
+    if (!shopFront) obox(trimAcc, o, t, n, L, 0, 0.55, 0.04, C_STONE, { ends: false });                  // 아랫단 석재
+    const band = tint.clone().multiplyScalar(kind === "com" ? 0.7 : 0.84);
+    if (kind !== "apt") for (let f = 1; f < b.floors; f++) obox(trimAcc, o, t, n, L, f * floorH - 0.09, 0.18, kind === "com" ? 0.1 : 0.07, band, { ends: false }); // 층 띠
+    // 옥상 난간벽 + 두겁
+    obox(trimAcc, [x1 - nx * 0.22, z1 - nz * 0.22], t, n, L, h, 0.9, 0.24, tint.clone().multiplyScalar(0.8), { ends: false, back: true });
+    obox(trimAcc, [x1 - nx * 0.27, z1 - nz * 0.27], t, n, L, h + 0.9, 0.08, 0.34, C_CAP, { ends: false });
+    if (kind !== "res") return;
+
+    // 창턱 · 발코니: 외벽 텍스처의 창 자리와 정확히 맞춤 (경로 가까운 건물만)
+    if (nearCam) {
+      const k0 = Math.ceil(per0 / BAY - 1e-6), k1 = Math.floor((per0 + L) / BAY + 1e-6);
+      for (let k = k0; k < k1; k++) {
+        const s0 = k * BAY - per0, col = (((k + uOff) % ATLAS) + ATLAS) % ATLAS;
+        for (let f = shopFront ? 1 : 0; f < b.floors; f++) {
+          const cell = resLayout[(f + vOff) % ATLAS][col];
+          if (!cell.w) continue;
+          const spans = cell.w === 2 ? [[0.156, 0.422], [0.578, 0.844]] : [[0.258, 0.742]];
+          spans.forEach(([a, c]) => {
+            const sa = s0 + a * BAY - 0.08;
+            obox(trimAcc, [x1 + tx * sa, z1 + tz * sa], t, n, (c - a) * BAY + 0.16, f * floorH + 0.33 * floorH - 0.08, 0.08, 0.12, C_SILL);
+          });
+          if (cell.balc && f > 0) {
+            const sb = s0 + 0.15, lb = BAY - 0.3;
+            obox(trimAcc, [x1 + tx * sb, z1 + tz * sb], t, n, lb, f * floorH + 0.02, 0.1, 0.45, C_RAIL);
+            obox(trimAcc, [x1 + tx * sb + nx * 0.4, z1 + tz * sb + nz * 0.4], t, n, lb, f * floorH + 0.95, 0.045, 0.05, C_RAIL);
+            for (let q = 0; q <= 5; q++) {
+              const sq = sb + (lb - 0.03) * (q / 5);
+              obox(trimAcc, [x1 + tx * sq + nx * 0.41, z1 + tz * sq + nz * 0.41], t, n, 0.03, f * floorH + 0.12, 0.83, 0.03, C_RAIL, { ends: false });
+            }
+          }
+        }
+      }
+    }
+    // 우수관 (정면 끝 모서리)
+    if (isFront) obox(trimAcc, [x1 + tx * (L - 0.3), z1 + tz * (L - 0.3)], t, n, 0.11, 0, h + 0.9, 0.11, C_PIPE);
+    // 현관 · 캐노피 · 현관등 · 이름판 · 계단실 창 (상가 없는 주택 정면)
+    if (isFront && !b.shop && L > 5) {
+      const sb = Math.ceil((per0 + L * 0.3) / BAY) * BAY - per0; // 칸 경계 = 텍스처 창과 겹치지 않는 자리
+      if (sb < 1.3 || sb > L - 1.3) return null;
+      const cx = x1 + tx * sb, cz = z1 + tz * sb;
+      const P = (a, bb, y) => [cx + tx * a + nx * bb, y, cz + tz * a + nz * bb];
+      quadN(trimAcc, P(-0.75, 0.03, 0), P(0.75, 0.03, 0), P(0.75, 0.03, 2.2), P(-0.75, 0.03, 2.2), [nx, 0, nz], C_GLASS); // 현관문
+      obox(trimAcc, [cx - tx * 0.86, cz - tz * 0.86], t, n, 0.11, 0, 2.32, 0.07, C_FRAME);
+      obox(trimAcc, [cx + tx * 0.75, cz + tz * 0.75], t, n, 0.11, 0, 2.32, 0.07, C_FRAME);
+      obox(trimAcc, [cx - tx * 0.86, cz - tz * 0.86], t, n, 1.72, 2.2, 0.12, 0.07, C_FRAME);
+      obox(trimAcc, [cx - tx * 1.15, cz - tz * 1.15], t, n, 2.3, 2.5, 0.12, 1.15, C_CAP);                        // 캐노피
+      obox(glowAcc, [cx - tx * 0.25, cz - tz * 0.25], t, n, 0.5, 2.43, 0.07, 0.4, C_LAMP);                      // 현관등
+      entranceLights.push(cx + nx * 0.5, 2.3, cz + nz * 0.5);
+      entrancePools.push([cx + nx * 1.4, cz + nz * 1.4, 4.2]);
+      const c = plates.cell(Math.floor(rd() * plates.count));                                                    // 빌라 이름판
+      quadN(plateAcc, P(-0.9, 0.05, 2.74), P(0.9, 0.05, 2.74), P(0.9, 0.05, 3.2), P(-0.9, 0.05, 3.2), [nx, 0, nz], null,
+        [[c[0], c[1]], [c[2], c[1]], [c[2], c[3]], [c[0], c[3]]]);
+      for (let f = 1; f < b.floors; f++) {                                                                         // 계단실 창 (층 사이)
+        const lit = rd() < 0.62, warm = C_STAIR.clone().multiplyScalar(0.35 + rd() * 0.3); // 간유리 너머 계단 등 (은은하게)
+        const A = P(-0.3, 0.04, f * floorH + 0.75), B = P(0.3, 0.04, f * floorH + 0.75), Cc = P(0.3, 0.04, f * floorH + 2.1), D = P(-0.3, 0.04, f * floorH + 2.1);
+        quadN(lit ? glowAcc : trimAcc, A, B, Cc, D, [nx, 0, nz], lit ? warm : C_GLASS);
+        obox(trimAcc, [cx - tx * 0.36, cz - tz * 0.36], t, n, 0.72, f * floorH + 0.68, 0.07, 0.08, C_SILL);
+      }
+      return [cx, cz];
+    }
+    return null;
+  }
+  // 옆벽 가스관 (노란 세로관 + 층마다 가로관)
+  function gasPipe(b, x1, z1, L, tx, tz, nx, nz, floorH) {
+    if (L < 4) return;
+    const t = [tx, tz], n = [nx, nz], o = [x1 + tx * 0.7, z1 + tz * 0.7];
+    obox(trimAcc, o, t, n, 0.07, 0.35, (b.floors - 1) * floorH + 2.0, 0.09, C_GAS);
+    for (let f = 0; f < b.floors; f++) obox(trimAcc, o, t, n, Math.min(L - 1.6, 2.6), f * floorH + 2.3, 0.07, 0.09, C_GAS);
+  }
+  // 옥탑 계단실 (현관 위쪽 지붕에 작은 집 모양)
+  function rooftopStair(b, tint, cx, cz, tx, tz, nx, nz) {
+    const t = [tx, tz], inn = [-nx, -nz], h = b.h;
+    const o = [cx - tx * 1.5 - nx * 0.7, cz - tz * 1.5 - nz * 0.7];
+    obox(trimAcc, o, t, inn, 3.0, h, 2.5, 3.4, tint.clone().multiplyScalar(0.82), { back: true });
+    obox(trimAcc, [o[0] - tx * 0.15 + nx * 0.15, o[1] - tz * 0.15 + nz * 0.15], t, inn, 3.3, h + 2.5, 0.12, 3.7, C_CAP, { back: true });
+    const P = (a, bb, y) => [o[0] + tx * a + inn[0] * bb, y, o[1] + tz * a + inn[1] * bb];
+    quadN(trimAcc, P(1.05, -0.02, h + 0.05), P(1.95, -0.02, h + 0.05), P(1.95, -0.02, h + 2.05), P(1.05, -0.02, h + 2.05), [nx, 0, nz], C_GLASS); // 옥탑 문
+    obox(glowAcc, [o[0] + tx * 1.3 + nx * 0.02, o[1] + tz * 1.3 + nz * 0.02], t, [nx, nz], 0.4, h + 2.2, 0.1, 0.12, C_LAMP);
+    entranceLights.push(o[0] + tx * 1.5 + nx * 0.3, h + 2.25, o[1] + tz * 1.5 + nz * 0.3);
+    return [o[0] + tx * 1.5 + inn[0] * 1.7, o[1] + tz * 1.5 + inn[1] * 1.7];
+  }
+
   city.buildings.forEach((b, bi) => {
     let pts = toPts(b.pts);
     const kind = b.k === "civic" ? "com" : b.k;
@@ -261,6 +389,9 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     const h = b.h;
     const floorH = kind === "apt" ? 2.8 : kind === "com" ? 3.4 : 2.9;
     const uOff = Math.floor(R(0, ATLAS)), vOff = Math.floor(R(0, ATLAS));
+    const ccx = pts.reduce((s, p) => s + p[0], 0) / pts.length, ccz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+    const nearCam = !mobile && nearRoute(ccx, ccz, 70); // 걷는 길에서 가까운 건물만 창턱·발코니까지
+    let entrance = null, frontDir = null;
     let per = 0;
     for (let i = 0; i < pts.length; i++) {
       const [x1, z1] = pts[i], [x2, z2] = pts[(i + 1) % pts.length];
@@ -270,9 +401,15 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
       const u0 = (per / BAY + uOff) / ATLAS, u1 = ((per + L) / BAY + uOff) / ATLAS;
       const v0 = vOff / ATLAS, v1 = (h / floorH + vOff) / ATLAS;
       accW.quad([x1, 0, z1], [x2, 0, z2], [x2, h, z2], [x1, h, z1], [nx, 0, nz], [[u0, v0], [u1, v0], [u1, v1], [u0, v1]], tint);
+      const per0 = per;
       per += L;
 
       const isFront = i === front;
+      const tx = (x2 - x1) / L, tz = (z2 - z1) / L;
+      const ent = edgeDetail(b, kind, isFront, x1, z1, L, tx, tz, nx, nz, per0, floorH, uOff, vOff, tint, nearCam);
+      if (ent) entrance = ent;
+      if (isFront) frontDir = [tx, tz, nx, nz];
+      if (kind === "res" && front !== undefined && i === (front + 1) % pts.length && rd() < 0.7) gasPipe(b, x1, z1, L, tx, tz, nx, nz, floorH);
       // 1층 상가 + 간판
       if (isFront && b.shop) {
         const gh = kind === "com" ? 4.2 : 3.0;
@@ -325,9 +462,16 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
     const tris = ShapeUtils.triangulateShape(contour, []);
     const roofCol = tmp.set(kind === "res" ? (r() < 0.55 ? "#5f7a5c" : "#7a756c") : "#6b6863").clone();
     tris.forEach(([a, bb, c]) => triUp(roofAcc, [pts[a][0], h, pts[a][1]], [pts[bb][0], h, pts[bb][1]], [pts[c][0], h, pts[c][1]], 0, roofCol));
+    // 옥탑 계단실: 현관 위쪽(현관이 없으면 지붕 가운데)
+    let stair = null;
+    if (kind === "res" && b.floors >= 3 && frontDir && rd() < 0.62) {
+      const [tx, tz, nx, nz] = frontDir;
+      const [sx, sz] = entrance || [ccx + nx * 1.7, ccz + nz * 1.7];
+      stair = rooftopStair(b, tint, sx, sz, tx, tz, nx, nz);
+    }
     if (kind === "res" && r() < 0.4) {
-      const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-      tankSpots.push([cx + R(-1.5, 1.5), h, cz + R(-1.5, 1.5)]);
+      const ox = R(-1.5, 1.5), oz = R(-1.5, 1.5);
+      tankSpots.push(stair ? [stair[0], h + 2.62, stair[1]] : [ccx + ox, h, ccz + oz]); // 옥탑이 있으면 그 위에 물탱크
     }
   });
   function pick(arr) { return arr[Math.floor(r() * arr.length)]; }
@@ -356,6 +500,15 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
   if (signAcc.count) scene.add(new Mesh(signAcc.build(), signMat));
   const darkMat = new MeshLambertMaterial({ color: "#26241f", side: DoubleSide });
   if (darkAcc.count) scene.add(new Mesh(darkAcc.build(), darkMat));
+  // 건물 디테일
+  // 밤에도 띠·창턱 윤곽이 남도록 아주 약하게 스스로 밝힘
+  if (trimAcc.count) scene.add(new Mesh(trimAcc.build(), new MeshLambertMaterial({ vertexColors: true, emissive: "#1b1916" })));
+  if (glowAcc.count) scene.add(new Mesh(glowAcc.build(), new MeshBasicMaterial({ vertexColors: true })));
+  if (plateAcc.count) {
+    const plateMat = new MeshLambertMaterial({ map: plates.texture, emissiveMap: plates.texture, emissive: "#ffffff", emissiveIntensity: 0.5 });
+    lit.push({ mat: plateMat, night: 0.55, dawn: 0.1 });
+    scene.add(new Mesh(plateAcc.build(), plateMat));
+  }
 
   /* ---------- 인스턴스 소품 ---------- */
   const dummy = new Object3D();
@@ -414,7 +567,8 @@ export async function buildCity(city, scene, { fontFamily, mobile, patchFog, ico
   instanced(lampGeo, new MeshLambertMaterial({ color: "#3a3c3d" }), lamps, (d, s) => { d.position.set(s[0], 0, s[1]); d.rotation.set(0, s[2], 0); d.scale.set(1, 1, 1); });
 
   /* 골목: 전신주 + 전선, 주차 차량 */
-  const poles = [], wires = [], secLights = [], parked = [], noParking = [], cones = [];
+  const poles = [], wires = [], secLights = [...entranceLights], parked = [], noParking = [], cones = [];
+  entrancePools.forEach((p) => pools.push(p)); // 현관등 아래 바닥 빛
   const rp = rng(4242); // 골목 소품 전용 (다른 배치의 무작위 순서를 바꾸지 않도록)
   const homeLine = city.route && city.route.w1 ? toPts(city.route.w1.slice(0, 4)) : null; // 집 앞 골목 (걷기 첫 구간)
   city.roads.forEach((rd) => {

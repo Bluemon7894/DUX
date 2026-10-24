@@ -49,6 +49,9 @@ export function facadeTextures(kind, seed) {
   // 바탕 (밝은 회색 계열, 건물마다 정점 색으로 물들임)
   d.fillStyle = kind === "com" ? "#b9bcbd" : kind === "apt" ? "#e2e0da" : "#d9d2c6";
   d.fillRect(0, 0, S * N, S * N);
+  // 주거 외벽의 칸별 창 배치 (3D 창턱·발코니를 같은 자리에 붙이려고 내보냄)
+  //  layout[층][칸] = { w: 0 창 없음 | 1 창 하나 | 2 창 둘, balc: 발코니 난간 }
+  const layout = Array.from({ length: N }, () => Array.from({ length: N }, () => ({ w: 0, balc: false })));
 
   for (let fy = 0; fy < N; fy++) {
     for (let bx = 0; bx < N; bx++) {
@@ -61,6 +64,7 @@ export function facadeTextures(kind, seed) {
         const roll = r();
         if (roll < 0.12) continue; // 창 없는 벽
         const twin = roll > 0.72;
+        layout[fy][bx].w = twin ? 2 : 1;
         const ww = twin ? 34 : 62, wh = 52, wy = y + 30;
         const xs = twin ? [x + 20, x + 74] : [x + 33];
         xs.forEach((wx) => {
@@ -85,6 +89,7 @@ export function facadeTextures(kind, seed) {
           }
         });
         if (r() < 0.22) { // 발코니 난간
+          layout[fy][bx].balc = true;
           d.fillStyle = "rgba(230,230,228,0.95)";
           d.fillRect(x + 8, y + 88, S - 16, 6);
           d.fillStyle = "rgba(230,230,228,0.75)";
@@ -117,7 +122,34 @@ export function facadeTextures(kind, seed) {
     }
   }
   noise(d, S * N, S * N, 16, r);
-  return { map: tex(cd), emissive: tex(ce) };
+  return { map: tex(cd), emissive: tex(ce), layout };
+}
+
+/* ---------- 빌라 이름판 (4 × 2 아틀라스): 돌판에 금색 글자 / 스테인리스에 검은 글자 ---------- */
+export const VILLA_NAMES = ["행복빌라", "청솔하우스", "그린빌", "해오름빌라", "다온하우스", "미소빌", "한빛빌라", "새솔맨션"];
+export function villaPlateTexture(fontFamily) {
+  const W = 256, H = 64;
+  const [c, g] = canvas(W * 4, H * 2);
+  VILLA_NAMES.forEach((name, i) => {
+    const x = (i % 4) * W, y = Math.floor(i / 4) * H;
+    const stone = i % 2 === 0;
+    const grd = g.createLinearGradient(x, y, x, y + H);
+    if (stone) { grd.addColorStop(0, "#3a3733"); grd.addColorStop(1, "#24221f"); }
+    else { grd.addColorStop(0, "#d9dcdf"); grd.addColorStop(0.5, "#b7bbbf"); grd.addColorStop(1, "#cfd2d5"); }
+    g.fillStyle = grd; g.fillRect(x, y, W, H);
+    g.strokeStyle = stone ? "rgba(217,181,106,0.7)" : "rgba(60,60,60,0.5)"; g.lineWidth = 3;
+    g.strokeRect(x + 5, y + 5, W - 10, H - 10);
+    g.fillStyle = stone ? "#d9b56a" : "#26282a";
+    g.font = `800 34px ${fontFamily}`; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(name, x + W / 2, y + H / 2 + 2, W - 30);
+  });
+  const t = tex(c, false);
+  // i 번째 이름의 uv 사각형 [u0, v0, u1, v1]
+  const cell = (i) => {
+    const cx = i % 4, cy = Math.floor(i / 4);
+    return [cx / 4 + 0.003, 1 - (cy + 1) / 2 + 0.006, (cx + 1) / 4 - 0.003, 1 - cy / 2 - 0.006];
+  };
+  return { texture: t, count: VILLA_NAMES.length, cell };
 }
 
 /* ---------- 1층 상가 (4×2 변형) ---------- */
