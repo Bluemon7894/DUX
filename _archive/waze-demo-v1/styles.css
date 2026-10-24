@@ -1,0 +1,1654 @@
+/* ==========================================================================
+   DUX — Waze.com 스타일 브랜드 쇼케이스 & 라이브 맵 디자인 시스템
+   - 특징: 초대형 볼드 타이포그래피, 비비드 컬러 블록 벤토 그리드, 36px 라운드 카드,
+           직관적인 인터랙티브 라이브 맵 프레임
+   ========================================================================== */
+
+:root {
+  --ink-black: #111315;
+  --ink-dark: #1e2328;
+  --ink-muted: #5a6572;
+  --surface-white: #ffffff;
+  --surface-gray: #f3f5f8;
+  --surface-border: #e2e8f0;
+
+  /* Waze 스타일 비비드 액센트 */
+  --waze-cyan: #33ccff;
+  --waze-cyan-deep: #00a8e8;
+  --waze-mint: #5ef2c8;
+  --waze-green: #00e599;
+  --waze-yellow: #ffe600;
+  --waze-soft-indigo: #e8edff;
+  --waze-coral: #ff5c35;
+
+  --radius-card: 36px;
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-pill: 9999px;
+
+  --font-main: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-main);
+  color: var(--ink-black);
+  background-color: var(--surface-white);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--waze-cyan-deep);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 20px;
+  z-index: 999;
+  background: var(--ink-black);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: var(--radius-pill);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.section-wrap {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ==========================================================================
+   공통 필(Pill) 버튼
+   ========================================================================== */
+.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 14px 28px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.btn-pill:hover {
+  transform: translateY(-2px);
+}
+
+.btn-pill:active {
+  transform: translateY(0);
+}
+
+.btn-xl {
+  padding: 18px 34px;
+  font-size: 1.08rem;
+}
+
+.btn-sm {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-black {
+  background: var(--ink-black);
+  color: #ffffff;
+}
+
+.btn-black:hover {
+  background: #272b30;
+  box-shadow: 0 10px 24px rgba(17, 19, 21, 0.18);
+}
+
+.btn-white {
+  background: #ffffff;
+  color: var(--ink-black);
+  border-color: var(--ink-black);
+}
+
+.btn-white:hover {
+  background: var(--surface-gray);
+}
+
+.btn-outline {
+  background: #ffffff;
+  color: var(--ink-black);
+  border-color: #cbd5e1;
+}
+
+.btn-outline:hover {
+  border-color: var(--ink-black);
+}
+
+/* ==========================================================================
+   상단 네비게이션 헤더 (Waze 스타일)
+   ========================================================================== */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #eef1f5;
+}
+
+.header-container {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink-black);
+}
+
+.logo-wordmark {
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .main-nav {
+    display: none;
+  }
+}
+
+.nav-item {
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.96rem;
+  color: var(--ink-black);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.nav-item:hover {
+  background: var(--surface-gray);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demo-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  background: #fff8db;
+  border: 1.5px solid #ffd43b;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #5c4800;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59f00;
+}
+
+/* ==========================================================================
+   1. 히어로 섹션 (Waze 시그니처 대형 라운드 배너)
+   ========================================================================== */
+.hero-section {
+  padding: 24px 0 40px;
+}
+
+.hero-banner-card {
+  background: var(--waze-cyan);
+  border-radius: var(--radius-card);
+  padding: clamp(32px, 5vw, 68px);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+@media (min-width: 1024px) {
+  .hero-banner-card {
+    grid-template-columns: 1.12fr 0.88fr;
+  }
+}
+
+.eyebrow-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-black);
+  padding: 7px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 800;
+  margin-bottom: 22px;
+}
+
+.hero-headline {
+  margin: 0 0 22px;
+  font-size: clamp(2.35rem, 4.6vw, 4.1rem);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  color: var(--ink-black);
+}
+
+.underline-accent {
+  background: var(--waze-yellow);
+  padding: 0 10px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.hero-subcopy {
+  margin: 0 0 32px;
+  font-size: clamp(1.05rem, 1.35vw, 1.22rem);
+  font-weight: 600;
+  color: #111315;
+  opacity: 0.9;
+  max-width: 580px;
+  line-height: 1.6;
+}
+
+.hero-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* 우측 그래픽 스테이지 */
+.showcase-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.floating-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  box-shadow: 0 16px 36px rgba(17, 19, 21, 0.12);
+  border: 2px solid var(--ink-black);
+}
+
+.card-mini-tag {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: var(--surface-gray);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 8px;
+}
+
+.speech-quote {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: var(--ink-black);
+}
+
+.speech-quote strong {
+  background: #d0f4ff;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.parsed-pills-card {
+  background: var(--ink-black);
+  color: #ffffff;
+}
+
+.parsed-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--waze-cyan);
+  margin-bottom: 10px;
+}
+
+.hero-tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hero-tag {
+  font-size: 0.84rem;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: #24292e;
+  color: #ffffff;
+}
+
+.hero-tag.tag-must {
+  background: var(--waze-green);
+  color: var(--ink-black);
+}
+
+.hero-tag.tag-speed {
+  background: var(--waze-yellow);
+  color: var(--ink-black);
+}
+
+.route-preview-card {
+  background: #ffffff;
+}
+
+.rp-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.rp-badge {
+  background: var(--waze-green);
+  color: var(--ink-black);
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.rp-eta {
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.rp-eta small {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.rp-title {
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.rp-reroute-strip {
+  background: #fff4e6;
+  border: 1.5px solid #ffd8a8;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==========================================================================
+   2. Waze 스타일 컬러 블록 벤토 그리드
+   ========================================================================== */
+.bento-section {
+  padding: 56px 0;
+}
+
+.section-heading-block {
+  margin-bottom: 36px;
+}
+
+.section-kicker {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--waze-cyan-deep);
+  margin-bottom: 8px;
+}
+
+.section-display-title {
+  margin: 0;
+  font-size: clamp(2rem, 3.6vw, 3rem);
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+}
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 900px) {
+  .bento-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.bento-card {
+  border-radius: var(--radius-card);
+  padding: clamp(28px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  min-height: 390px;
+}
+
+.card-mint {
+  background: var(--waze-mint);
+  color: var(--ink-black);
+}
+
+.card-dark {
+  background: var(--ink-black);
+  color: #ffffff;
+}
+
+.card-yellow {
+  background: var(--waze-yellow);
+  color: var(--ink-black);
+}
+
+.card-soft {
+  background: var(--waze-soft-indigo);
+  color: var(--ink-black);
+}
+
+.bento-tag {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(17, 19, 21, 0.08);
+  margin-bottom: 16px;
+}
+
+.tag-dark {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--waze-cyan);
+}
+
+.bento-title {
+  margin: 0 0 14px;
+  font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.bento-desc {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+/* 벤토 카드 내부 그래픽 요소 */
+.graphic-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.graphic-chip {
+  background: #ffffff;
+  color: var(--ink-black);
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  font-weight: 800;
+  font-size: 0.92rem;
+  border: 2px solid var(--ink-black);
+}
+
+.graphic-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.compare-row {
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.row-bad {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+.row-good {
+  background: #ffffff;
+  color: var(--ink-black);
+}
+
+.c-badge {
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.badge-neon {
+  background: var(--waze-green);
+  color: var(--ink-black);
+}
+
+.quote-pill {
+  background: #ffffff;
+  border: 2px solid var(--ink-black);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+}
+
+.q-badge {
+  display: inline-block;
+  font-size: 0.76rem;
+  font-weight: 900;
+  background: var(--ink-black);
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 8px;
+}
+
+.quote-pill p {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.graphic-pipeline {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--ink-black);
+}
+
+@media (max-width: 560px) {
+  .graphic-pipeline {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pipe-step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pipe-step strong {
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.pipe-step span {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.pipe-arrow {
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+
+/* ==========================================================================
+   3. Waze Live Map 스타일 인터랙티브 체험 섹션
+   ========================================================================== */
+.live-demo-section {
+  padding: 48px 0 88px;
+  background: var(--surface-gray);
+  border-top: 1px solid var(--surface-border);
+}
+
+.demo-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.demo-kicker-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.demo-notice-badge {
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: #fff8db;
+  border: 1px solid #ffd43b;
+  color: #5c4800;
+}
+
+.scenario-tabs-wrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tabs-label {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink-muted);
+}
+
+.scenario-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.scenario-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  border: 2px solid transparent;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink-black);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(17, 19, 21, 0.05);
+  transition: all 0.15s ease;
+}
+
+.scenario-btn:hover {
+  border-color: var(--ink-black);
+}
+
+.scenario-btn.active {
+  background: var(--ink-black);
+  color: #ffffff;
+}
+
+.scenario-btn-badge {
+  font-size: 0.74rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--waze-cyan);
+  color: var(--ink-black);
+  font-weight: 900;
+}
+
+/* 앱 쇼케이스 프레임 (좌측 사이드바 + 우측 라이브 맵) */
+.app-showcase-frame {
+  background: #ffffff;
+  border-radius: var(--radius-card);
+  border: 2px solid var(--ink-black);
+  box-shadow: 0 24px 60px rgba(17, 19, 21, 0.1);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1060px) {
+  .app-showcase-frame {
+    grid-template-columns: 460px 1fr;
+  }
+}
+
+.app-sidebar {
+  border-right: 2px solid var(--surface-border);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-block {
+  padding: 24px;
+}
+
+.input-block {
+  border-bottom: 2px solid var(--surface-border);
+}
+
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.step-pill {
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--ink-black);
+  color: #ffffff;
+}
+
+.link-reset {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--ink-muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* 출발 / 도착 입력 박스 */
+.route-endpoints-box {
+  background: var(--surface-gray);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.endpoint-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ep-badge {
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.ep-start {
+  background: var(--waze-cyan);
+  color: var(--ink-black);
+}
+
+.ep-end {
+  background: var(--ink-black);
+  color: #ffffff;
+}
+
+.ep-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink-black);
+  padding: 6px 0;
+}
+
+.ep-input:focus {
+  outline: none;
+}
+
+.ep-divider {
+  height: 1px;
+  background: #dde3ea;
+  margin: 6px 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.btn-swap {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* 자연어 입력창 */
+.prompt-box-wrap {
+  margin-bottom: 14px;
+}
+
+.prompt-label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.prompt-textarea {
+  width: 100%;
+  border: 2px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  font-family: inherit;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: var(--ink-black);
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.prompt-textarea:focus {
+  outline: none;
+  border-color: var(--ink-black);
+}
+
+.quick-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.quick-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid #d0d7de;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-dark);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.quick-chip-btn.active {
+  background: var(--waze-cyan);
+  border-color: var(--ink-black);
+  color: var(--ink-black);
+  font-weight: 800;
+}
+
+/* AI 요약 박스 */
+.ai-summary-card {
+  background: #f0faff;
+  border: 1.5px solid #99e5ff;
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.ai-summary-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ai-badge {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: #0077a8;
+}
+
+.ai-sub {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.parsed-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.parsed-item-card {
+  background: #ffffff;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.parsed-item-cat {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.must-tag {
+  background: var(--waze-green);
+  color: var(--ink-black);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.parsed-item-val {
+  font-weight: 800;
+  color: var(--ink-black);
+}
+
+/* 예외 안내 카드 */
+.ambiguity-card {
+  margin: 16px 24px;
+  padding: 18px;
+  background: #fff8db;
+  border: 2px solid var(--ink-black);
+  border-radius: var(--radius-md);
+}
+
+.amb-title {
+  font-weight: 900;
+  font-size: 0.96rem;
+  margin-bottom: 6px;
+}
+
+.amb-desc {
+  margin: 0 0 12px;
+  font-size: 0.86rem;
+  color: var(--ink-dark);
+}
+
+/* 경로 후보 카드 리스트 */
+.route-pair-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.candidates-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.route-card {
+  border: 2px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #ffffff;
+}
+
+.route-card:hover {
+  border-color: #94a3b8;
+}
+
+.route-card.selected {
+  border-color: var(--ink-black);
+  background: #f8fdff;
+  box-shadow: 0 6px 18px rgba(17, 19, 21, 0.08);
+}
+
+.route-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.route-rank-badge {
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.badge-recommended {
+  background: var(--waze-cyan);
+  color: var(--ink-black);
+}
+
+.badge-rerouted-card {
+  background: var(--waze-green);
+  color: var(--ink-black);
+}
+
+.badge-alternative {
+  background: var(--surface-gray);
+  color: var(--ink-dark);
+}
+
+.badge-fastest-warn {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.route-metrics-primary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.route-total-time {
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.route-time-diff {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--ink-muted);
+}
+
+.route-card-title {
+  margin: 0 0 8px;
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.route-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.stat-pill {
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface-gray);
+}
+
+.condition-verification-box {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+}
+
+.match-full {
+  background: #e6fcf5;
+  color: #087f5b;
+}
+
+.match-partial {
+  background: #fff9db;
+  color: #8a6d00;
+}
+
+.match-fail {
+  background: #fff5f5;
+  color: #c92a2a;
+}
+
+.verification-summary-title {
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.verification-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  color: var(--ink-dark);
+  font-weight: 600;
+}
+
+.req-pill {
+  font-size: 0.66rem;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.route-ai-explanation {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+/* ==========================================================================
+   우측 대형 맵 스테이지 & 재추천 카드
+   ========================================================================== */
+.app-map-stage {
+  display: flex;
+  flex-direction: column;
+  background: #eef2f6;
+  position: relative;
+}
+
+.map-top-hud {
+  padding: 16px 22px;
+  background: #ffffff;
+  border-bottom: 1.5px solid var(--surface-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.hud-route-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hud-demo-pill {
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-gray);
+}
+
+.hud-active-title {
+  font-size: 0.96rem;
+  font-weight: 900;
+}
+
+.hud-sim-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hud-status-tag {
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-gray);
+}
+
+.btn-sim-trigger {
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--ink-black);
+  background: var(--waze-yellow);
+  color: var(--ink-black);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.14s ease;
+}
+
+.btn-sim-trigger:hover {
+  transform: scale(1.02);
+}
+
+.hud-banner {
+  margin: 12px 20px 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.86rem;
+  border: 2px solid var(--ink-black);
+}
+
+.banner-muted {
+  background: #ffffff;
+}
+
+.banner-applied {
+  background: var(--waze-mint);
+}
+
+.banner-sub {
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.btn-inline-action {
+  background: var(--ink-black);
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* 상황 변화 재추천 비교 카드 */
+.reroute-overlay-card {
+  margin: 16px 20px 0;
+  background: #ffffff;
+  border: 2.5px solid var(--ink-black);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: 0 16px 36px rgba(17, 19, 21, 0.14);
+}
+
+.ro-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ro-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ro-alert-badge {
+  background: var(--waze-coral);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.ro-demo-tag {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--ink-muted);
+}
+
+.ro-close-btn {
+  background: var(--surface-gray);
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ro-title {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.ro-desc {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+}
+
+.ro-preserved-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ro-preserved-label {
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.ro-preserved-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preserved-chip {
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--waze-yellow);
+  color: var(--ink-black);
+}
+
+.ro-ai-bubble {
+  background: #f0faff;
+  border-left: 4px solid var(--waze-cyan-deep);
+  padding: 10px 14px;
+  border-radius: 0 12px 12px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ro-ai-text {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.ro-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 640px) {
+  .ro-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ro-comp-box {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid #e2e8f0;
+}
+
+.box-reroute {
+  background: #f2fffb;
+  border-color: var(--ink-black);
+}
+
+.ro-comp-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.ro-tag-warn {
+  font-size: 0.74rem;
+  font-weight: 900;
+  color: #c92a2a;
+}
+
+.ro-tag-good {
+  font-size: 0.74rem;
+  font-weight: 900;
+  background: var(--waze-green);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.ro-time-warn {
+  color: #c92a2a;
+  font-weight: 900;
+}
+
+.ro-time-good {
+  color: var(--ink-black);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.ro-comp-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.ro-comp-note,
+.ro-comp-diff {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.ro-check-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #087f5b;
+}
+
+.ro-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* SVG 맵 캔버스 */
+.svg-map-container {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.waze-svg-map {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.map-floating-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid var(--surface-border);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.lg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lg-line {
+  display: inline-block;
+  width: 22px;
+  height: 4px;
+}
+
+.lg-solid {
+  background: #00b8f5;
+}
+
+.lg-dashed {
+  border-top: 3px dashed #6366f1;
+  height: 0;
+}
+
+.lg-dotted {
+  border-top: 3px dotted #94a3b8;
+  height: 0;
+}
+
+/* 하단 구간별 이동 타임라인 */
+.map-bottom-timeline {
+  background: #ffffff;
+  border-top: 2px solid var(--surface-border);
+  padding: 18px 22px;
+}
+
+.tl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.tl-title {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.tl-summary-pill {
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--waze-cyan);
+}
+
+.tl-steps-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.segment-item {
+  background: var(--surface-gray);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.segment-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.segment-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+}
+
+.segment-detail {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   푸터
+   ========================================================================== */
+.site-footer {
+  background: var(--ink-black);
+  color: #ffffff;
+  padding: 56px 0;
+}
+
+.footer-top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (min-width: 860px) {
+  .footer-top {
+    grid-template-columns: 1fr 1.2fr;
+  }
+}
+
+.footer-logo {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--waze-cyan);
+  margin-bottom: 8px;
+}
+
+.footer-tagline {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.footer-notice-box {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+}
+
+.footer-notice-box strong {
+  display: block;
+  color: var(--waze-yellow);
+  margin-bottom: 6px;
+}
+
+.footer-notice-box p {
+  margin: 0;
+  line-height: 1.6;
+}

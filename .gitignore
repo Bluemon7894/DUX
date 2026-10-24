@@ -1,0 +1,8 @@
+# 로컬 개발 도구 설정
+.claude/
+
+# 운영체제 · 편집기 부산물
+Thumbs.db
+desktop.ini
+.DS_Store
+__pycache__/

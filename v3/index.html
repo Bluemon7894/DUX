@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DUX — 오늘의 나에게 맞는 길</title>
+  <meta name="description" content="DUX(덕스)는 오늘의 이동 상황과 선호를 말하면 조건에 맞는 경로를 찾고, 이동 중 상황이 바뀌어도 처음 조건을 지킨 대안을 다시 안내하는 이동 앱입니다. Android APK로 내려받을 수 있습니다." />
+  <meta name="theme-color" content="#0B0A08" />
+  <script>document.documentElement.classList.add("js");</script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="v3.css" />
+</head>
+<body>
+  <a href="#c-download" class="skip">다운로드로 바로가기</a>
+
+  <!-- 배경: 안개 낀 3D 도시 지도 (스크롤에 따라 카메라가 출발지 → 도착지로 비행) -->
+  <div class="stage" aria-hidden="true">
+    <canvas id="scene"></canvas>
+    <div class="stage__fallback"></div>
+    <div class="labels" id="labels">
+      <span class="lbl" data-lbl="origin"><b>출발</b>한빛동</span>
+      <span class="lbl" data-lbl="stop"><b>정류장</b>402번 승차</span>
+      <span class="lbl" data-lbl="transfer"><b>환승</b>엘리베이터</span>
+      <span class="lbl lbl--alt" data-lbl="alt"><b>대안</b>지하철 → 400번</span>
+      <span class="lbl lbl--dest" data-lbl="dest"><b>도착</b>새솔 시립도서관</span>
+    </div>
+  </div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="hd" id="hd">
+    <a class="hd__brand" href="#c-intro" aria-label="DUX 처음으로">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="currentColor"/><path d="M8 22C11.5 22 12.5 16 16 16C19.5 16 20.5 10 24 10" stroke="var(--gold)" stroke-width="3.2" stroke-linecap="round" fill="none"/><circle cx="8" cy="22" r="3" fill="var(--gold)"/><circle cx="24" cy="10" r="3" fill="var(--paper)"/></svg>
+      DUX
+    </a>
+    <nav class="hd__nav" aria-label="장면 이동">
+      <a href="#c-speak">말하기</a>
+      <a href="#c-match">맞추기</a>
+      <a href="#c-reroute">다시 안내</a>
+      <a href="#c-trust">신뢰</a>
+      <a href="#c-download" class="hd__dl">APK 받기</a>
+    </nav>
+  </header>
+
+  <div class="rail" aria-hidden="true"><i id="rail-fill"></i></div>
+  <div class="hud" aria-hidden="true">
+    <span id="hud-time">14:20</span>
+    <span id="hud-name">출발 전</span>
+  </div>
+
+  <main id="main" class="story">
+    <!-- 00 인트로 -->
+    <section class="ch ch--intro" id="s-intro" data-a="0" data-b="0.09" aria-labelledby="t-intro">
+      <p class="eyebrow mono">DUX · 맞춤형 이동 안내</p>
+      <h1 id="t-intro" class="mega focus">오늘의 나에게<br />맞는 길.</h1>
+      <p class="lead">말하면 찾고, 바뀌면 다시 안내합니다.</p>
+      <p class="cue mono"><i></i>스크롤하면 출발합니다</p>
+    </section>
+
+    <!-- 01 말하기: 사선 패널 + 원형 렌즈 -->
+    <section class="ch ch--speak" id="s-speak" data-a="0.09" data-b="0.25" aria-labelledby="t-speak">
+      <div class="slab" aria-hidden="true"></div>
+      <div class="lens" aria-hidden="true">
+        <div class="lens__ring"></div>
+        <div class="lens__view">
+          <div class="pd">
+            <div class="pd__bar"><span>14:20</span><span>DUX</span></div>
+            <p class="pd__hint">어디로, 어떻게 갈까요?</p>
+            <p class="pd__msg" id="type-msg" data-text="오늘 다리가 아파서 천천히 걸을 거야. 계단은 피하고, 5분 정도 더 걸려도 환승이 적은 길로 가고 싶어."></p>
+            <div class="pd__input"><span>말하는 중</span><i class="pd__wave"><b></b><b></b><b></b><b></b></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="speak__copy">
+        <p class="num mono">01</p>
+        <h2 id="t-speak" class="big focus">평소처럼<br />말하세요.</h2>
+        <p class="body">필터를 하나씩 고르지 않아도 됩니다. 오늘 몸 상태와 원하는 이동 방식을 문장 그대로 말하면 됩니다.</p>
+        <p class="sr-only">예시: “오늘 다리가 아파서 천천히 걸을 거야. 계단은 피하고, 5분 정도 더 걸려도 환승이 적은 길로 가고 싶어.”</p>
+      </div>
+    </section>
+
+    <!-- 02 맞추기: 문장이 조건이 되고, 지도 위에 경로가 그려짐 -->
+    <section class="ch ch--match" id="s-match" data-a="0.25" data-b="0.37" aria-labelledby="t-match">
+      <div class="scrim"></div>
+      <p class="num mono">02</p>
+      <h2 id="t-match" class="big">문장이<br />조건이 됩니다.</h2>
+      <ol class="conds">
+        <li style="--k:0"><span class="mono">보행 속도</span><b>천천히</b></li>
+        <li style="--k:1"><span class="mono">계단</span><b>피하기 <em>필수</em></b></li>
+        <li style="--k:2"><span class="mono">환승</span><b>적게 · 5분까지 더</b></li>
+      </ol>
+      <p class="body">그리고 그 조건으로 도보·버스·지하철·자전거를 조합해 길을 찾습니다.</p>
+    </section>
+
+    <!-- 03 이동: 경로를 따라 비행 -->
+    <section class="ch ch--ride" id="s-ride" data-a="0.37" data-b="0.53" aria-labelledby="t-ride">
+      <div class="ride__eta">
+        <div class="scrim"></div>
+        <span class="mono">예상 소요</span>
+        <strong><span id="eta-a">31</span><small>분</small></strong>
+      </div>
+      <div class="ride__copy">
+        <div class="scrim"></div>
+        <p class="num mono">03</p>
+        <h2 id="t-ride" class="mid">최단보다 4분 길지만,<br />계단 없이 갑니다.</h2>
+        <ol class="legs" aria-label="구간">
+          <li style="--k:0"><span class="mono">도보</span>4분</li>
+          <li style="--k:1"><span class="mono">버스 402</span>14분</li>
+          <li style="--k:2"><span class="mono">지하철</span>9분 · 엘리베이터 환승</li>
+          <li style="--k:3"><span class="mono">도보</span>4분</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 04 상황 변화: 검은 사선 컷 -->
+    <section class="ch ch--delay" id="s-delay" data-a="0.53" data-b="0.63" data-tone="dark" aria-labelledby="t-delay">
+      <div class="cut" aria-hidden="true"></div>
+      <div class="delay__copy">
+        <p class="num mono">04</p>
+        <h2 id="t-delay" class="big"><span class="gold">402번 버스</span><br />9분 지연.</h2>
+        <p class="body">기다리면 다음 환승을 놓칠 수 있습니다.</p>
+      </div>
+    </section>
+
+    <!-- 05 다시 안내: 원형 링 + 숫자 변화 -->
+    <section class="ch ch--reroute" id="s-reroute" data-a="0.63" data-b="0.79" aria-labelledby="t-reroute">
+      <div class="ring" aria-hidden="true"></div>
+      <div class="reroute__num" aria-hidden="true"><span id="eta-b">31</span><small>분</small></div>
+      <div class="reroute__copy">
+        <div class="scrim"></div>
+        <p class="num mono">05</p>
+        <h2 id="t-reroute" class="mid">4분 더 걸리지만,<br />계단 없이 갈 수 있는 길.</h2>
+        <p class="body">처음 말한 조건 — 천천히, 계단 제외, 환승 적게 — 은 그대로 두고 다시 찾았습니다. 예상 소요는 31분에서 35분으로 바뀝니다. 바꿀지는 직접 정합니다.</p>
+      </div>
+    </section>
+
+    <!-- 06 신뢰 -->
+    <section class="ch ch--trust" id="s-trust" data-a="0.79" data-b="0.89" aria-labelledby="t-trust">
+      <div class="scrim"></div>
+      <p class="num mono">06</p>
+      <h2 id="t-trust" class="mid">AI는 말을 이해하고,<br />길과 시간은 데이터가 계산합니다.</h2>
+      <ol class="pipe">
+        <li style="--k:0"><span class="mono">말</span>사용자의 문장</li>
+        <li style="--k:1"><span class="mono">조건</span>AI가 정리</li>
+        <li style="--k:2"><span class="mono">계산</span>지도·교통 데이터</li>
+        <li style="--k:3"><span class="mono">설명</span>왜 이 길인지</li>
+      </ol>
+      <p class="body">예상 시간은 보장이 아니라 예측입니다. 정보가 늦거나 부족하면, 그만큼 덜 확실하다고 함께 알려 드립니다.</p>
+    </section>
+
+    <!-- 07 도착 -->
+    <section class="ch ch--arrive" id="s-arrive" data-a="0.89" data-b="0.945" aria-labelledby="t-arrive">
+      <h2 id="t-arrive" class="mega focus">도착.</h2>
+      <p class="mono arrive__meta">14:55 · 계단 0곳 · 환승 1회</p>
+    </section>
+
+    <!-- 08 다운로드 -->
+    <section class="ch ch--download" id="s-download" data-a="0.945" data-b="1.01" data-tone="dark" aria-labelledby="t-download">
+      <div class="dl">
+        <div class="dl__copy">
+          <p class="num mono">Android</p>
+          <h2 id="t-download" class="mid">오늘의 길,<br />지금 받아 보세요.</h2>
+          <p class="body">휴대폰 카메라로 QR을 찍거나, 휴대폰에서 바로 버튼을 눌러 설치 파일(APK)을 내려받으세요.</p>
+          <!-- 교체 지점: 실제 APK 파일 경로 -->
+          <a class="dl__btn" id="apk-link" href="downloads/dux.apk" download>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/></svg>
+            APK 다운로드
+          </a>
+          <p class="dl__note" id="apk-note" role="status" aria-live="polite">현재 Android용 APK로 제공됩니다. 설치할 때 ‘알 수 없는 앱 설치’ 허용이 필요할 수 있습니다.</p>
+        </div>
+        <figure class="dl__qr">
+          <!-- 교체 지점: 실제 다운로드 QR 이미지 -->
+          <img src="assets/qr-placeholder.svg" width="220" height="220" alt="DUX APK 다운로드 QR 코드" />
+          <figcaption class="mono">카메라로 스캔</figcaption>
+        </figure>
+      </div>
+      <p class="fine mono">© 2026 DUX</p>
+    </section>
+  </main>
+
+  <!-- 스크롤 길이 + 장면 이동용 앵커 (p = 진행률) -->
+  <div class="track" aria-hidden="true">
+    <span class="anchor" id="c-intro" style="--p:0"></span>
+    <span class="anchor" id="c-speak" style="--p:0.17"></span>
+    <span class="anchor" id="c-match" style="--p:0.33"></span>
+    <span class="anchor" id="c-ride" style="--p:0.45"></span>
+    <span class="anchor" id="c-delay" style="--p:0.585"></span>
+    <span class="anchor" id="c-reroute" style="--p:0.74"></span>
+    <span class="anchor" id="c-trust" style="--p:0.85"></span>
+    <span class="anchor" id="c-download" style="--p:1"></span>
+  </div>
+
+  <script type="module" src="v3.js"></script>
+</body>
+</html>

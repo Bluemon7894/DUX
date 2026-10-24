@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko" data-tod="night">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DUX — 오늘의 나에게 맞는 길</title>
+  <meta name="description" content="DUX(덕스)는 원하는 이동 조건을 말로 설정하면 그 조건에 맞는 경로를 찾고, 버스 지연 같은 상황이 생겨도 같은 조건으로 다시 안내하는 길찾기 앱입니다. Android 앱으로 내려받을 수 있습니다." />
+  <meta name="theme-color" content="#0B0A08" />
+  <link rel="icon" type="image/png" href="assets/dux-icon-64.png" />
+  <link rel="apple-touch-icon" href="assets/dux-icon-192.png" />
+  <!-- 실제 지도 변환본을 쓰려면 content 에 경로를 넣으세요. 예: data/city.json -->
+  <meta name="dux-city-data" content="" />
+  <script>
+    // 어떤 경로로 들어와도 첫 장면부터 시작 (브라우저의 스크롤 위치 복원 끔)
+    document.documentElement.classList.add("js");
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
+  </script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="v4.css?v=20261024d" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="ic-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="2"/><path d="M11.5 8.5 9 14l3 2.5 1 4.5M9 14l-2 6.5M11.8 9.2l3.2 2.8 3 .6M11.5 8.5 8 10l-1.5 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-bus" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11h14M8 18v2.5M16 18v2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-sub" viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 10h12M9 17l-2 4M15 17l2 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-turn" viewBox="0 0 24 24"><path d="M6 21v-8a4 4 0 0 1 4-4h9M15 5l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-up" viewBox="0 0 24 24"><path d="M12 21V4M6 10l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="ic-cross" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16" stroke="currentColor" stroke-width="2.4"/></symbol>
+      <symbol id="ic-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="ic-elev" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v18M8 9l-1.5 2h3zM16 13l1.5-2h-3z" stroke="currentColor" stroke-width="1.6" fill="currentColor"/></symbol>
+      <symbol id="ic-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    </defs>
+  </svg>
+
+  <a href="#c-download" class="skip">앱 받기로 바로가기</a>
+
+  <!-- 배경: 1인칭으로 걷는 거리 -->
+  <div class="stage" aria-hidden="true">
+    <canvas id="scene"></canvas>
+    <div class="stage__fallback"></div>
+    <div class="labels">
+      <span class="lbl" data-lbl="stop"><b>정류장</b>버스정보안내기</span>
+      <span class="lbl lbl--alt" data-lbl="elevator"><b>대안</b>엘리베이터 입구</span>
+      <span class="lbl lbl--dest" data-lbl="dest"><b>도착</b>새솔 시립도서관</span>
+    </div>
+  </div>
+  <div class="veil" id="veil" aria-hidden="true"><p>지하철 2정거장 → 400번 버스 · 계단 없이 이동 중</p></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="hd">
+    <a class="hd__brand" href="#c-intro" aria-label="DUX - 맞춤형 AI 안내앱 서비스, 처음으로">
+      <img src="assets/dux-icon-64.png" width="32" height="32" alt="" />
+      <span>DUX</span>
+      <span class="hd__sub">- 맞춤형 AI 안내앱 서비스</span>
+    </a>
+    <nav class="hd__nav" aria-label="기능 바로가기">
+      <a href="#c-speak">조건 설정</a>
+      <a href="#c-match">맞춤 경로</a>
+      <a href="#c-reroute">재탐색</a>
+      <a href="#c-trust">신뢰도</a>
+      <a href="#c-download" class="hd__dl">앱 받기</a>
+    </nav>
+  </header>
+
+  <div class="rail" aria-hidden="true"><i id="rail-fill"></i></div>
+  <div class="hud" aria-hidden="true"><span id="hud-time">--:--</span><span id="hud-name">출발 전</span></div>
+
+  <!-- 손에 든 휴대폰: 실제 DUX 앱 화면 -->
+  <div class="hand" id="hand" data-s="lock" aria-hidden="true">
+    <div class="ph">
+      <div class="ph__notch"></div>
+      <div class="ph__scr">
+        <canvas class="pmap" id="phone-map"></canvas>
+        <div class="sbar">
+          <span class="sbar__t" data-clock="trip">--:--</span>
+          <span class="sbar__i">
+            <svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+            <span class="sbar__lte">5G</span>
+            <svg viewBox="0 0 27 12" class="bat"><rect x="0.5" y="0.5" width="23" height="11" rx="3" fill="none" stroke="currentColor"/><rect x="2" y="2" width="16" height="8" rx="1.6"/><rect x="24.5" y="4" width="2" height="4" rx="1"/></svg>
+          </span>
+        </div>
+
+        <!-- 잠금화면 -->
+        <div class="ps ps--lock" data-ps="lock">
+          <p class="lk__date" data-date>--</p>
+          <p class="lk__time" data-clock="now">--:--</p>
+          <div class="noti">
+            <img class="appic" src="assets/dux-icon-64.png" alt="" />
+            <div><p class="noti__app">DUX<span>지금</span></p><p class="noti__msg">출발 전에 오늘 원하는 이동 방식을 말해 주세요. 그대로 길을 찾아 드릴게요.</p></div>
+          </div>
+        </div>
+
+        <!-- 음성으로 조건 입력 -->
+        <div class="ps" data-ps="voice">
+          <div class="search"><svg><use href="#ic-search"/></svg><span>새솔 시립도서관</span><span class="search__mic"><svg><use href="#ic-mic"/></svg></span></div>
+          <div class="sheet">
+            <p class="sheet__cap">조건을 말로 설정하기</p>
+            <p class="voice__msg" id="type-msg" data-text="오늘 다리가 아파서 천천히 걸을 거야. 계단은 피하고, 5분 정도 더 걸려도 환승이 적은 길로 가고 싶어."></p>
+            <div class="voice__bar"><span class="mic"><svg><use href="#ic-mic"/></svg></span><div class="wave"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div></div>
+          </div>
+        </div>
+
+        <!-- 조건 맞춤 경로 -->
+        <div class="ps" data-ps="understood">
+          <div class="od"><p><i class="od__o"></i>현재 위치</p><p><i class="od__d"></i>새솔 시립도서관</p></div>
+          <div class="sheet">
+            <p class="sheet__cap">내 조건 <span class="tag">음성으로 설정됨</span></p>
+            <div class="chips"><span>천천히 걷기</span><span>계단 제외</span><span>환승 1회 이하</span><span>+5분 허용</span></div>
+            <div class="ropt ropt--best">
+              <p class="ropt__head"><b>31분</b><span><em data-t="31">--:--</em> 도착</span><span class="badge">조건 충족</span></p>
+              <div class="legbar"><i style="--g:4"><svg><use href="#ic-walk"/></svg></i><i class="bus" style="--g:14"><svg><use href="#ic-bus"/></svg>402</i><i class="sub" style="--g:9"><svg><use href="#ic-sub"/></svg>2호선</i><i style="--g:4"><svg><use href="#ic-walk"/></svg></i></div>
+              <p class="ropt__meta">계단 0곳 · 환승 1회(엘리베이터) · 도보 8분</p>
+            </div>
+            <div class="ropt ropt--off">
+              <p class="ropt__head"><b>27분</b><span class="badge badge--no">계단 2곳</span></p>
+              <p class="ropt__meta">최단 경로 · 내 조건과 맞지 않아 제외했어요</p>
+            </div>
+            <span class="pbtn">안내 시작</span>
+          </div>
+        </div>
+
+        <!-- 걷기 안내 -->
+        <div class="ps" data-ps="nav">
+          <div class="turn"><span class="turn__ic"><svg><use href="#ic-turn"/></svg></span><div><p class="turn__dist"><b id="nav-dist">--</b>m</p><p class="turn__txt" id="nav-step">경로를 따라 이동</p></div></div>
+          <div class="navfoot"><div><p class="navfoot__eta"><b data-t="31">--:--</b> 도착 예정</p><p class="navfoot__sub">정류장까지 <span id="nav-rem">--</span>m · 계단 없는 길</p></div><span class="xbtn">종료</span></div>
+        </div>
+
+        <!-- 지연 알림 -->
+        <div class="ps" data-ps="alert">
+          <div class="turn turn--wait"><span class="turn__ic"><svg><use href="#ic-bus"/></svg></span><div><p class="turn__dist">402번</p><p class="turn__txt">정류장에서 기다리는 중</p></div></div>
+          <div class="push">
+            <img class="appic" src="assets/dux-icon-64.png" alt="" />
+            <div><p class="noti__app">DUX<span>지금</span></p><p class="push__title">타려던 402번 버스가 9분 늦어져요</p><p class="push__body">이대로면 2호선 환승을 놓칠 수 있어요. 처음 말한 조건 그대로 다른 길을 찾고 있어요.</p></div>
+          </div>
+          <div class="navfoot"><div><p class="navfoot__eta"><b class="warn" data-t="40">--:--</b> 도착 예상</p><p class="navfoot__sub">지연 반영 · 환승 실패 가능성 높음</p></div><span class="xbtn">종료</span></div>
+        </div>
+
+        <!-- 조건 유지 재탐색 -->
+        <div class="ps" data-ps="compare">
+          <div class="sheet">
+            <p class="sheet__cap">경로를 다시 찾았어요 <span class="tag">내 조건 유지</span></p>
+            <div class="ropt ropt--best">
+              <p class="ropt__head"><b>35분</b><span><em data-t="35">--:--</em> 도착</span><span class="badge">계단 0곳</span></p>
+              <div class="legbar"><i style="--g:3"><svg><use href="#ic-walk"/></svg></i><i class="sub" style="--g:6"><svg><use href="#ic-sub"/></svg>2정거장</i><i class="bus" style="--g:22"><svg><use href="#ic-bus"/></svg>400</i><i style="--g:4"><svg><use href="#ic-walk"/></svg></i></div>
+              <p class="ropt__meta"><svg><use href="#ic-elev"/></svg>엘리베이터 입구로 · 환승 1회</p>
+            </div>
+            <div class="ropt ropt--off">
+              <p class="ropt__head"><b>32분</b><span class="badge badge--no">계단 2곳</span></p>
+              <p class="ropt__meta">더 빠르지만 내 조건과 달라 추천하지 않아요</p>
+            </div>
+            <p class="reason"><svg><use href="#ic-info"/></svg>4분 더 걸리지만 계단 없이 갈 수 있는 경로예요.</p>
+            <span class="pbtn">이 경로로 변경</span>
+          </div>
+        </div>
+
+        <!-- 예측 신뢰도 -->
+        <div class="ps" data-ps="trust">
+          <div class="turn"><span class="turn__ic"><svg><use href="#ic-up"/></svg></span><div><p class="turn__dist"><b id="nav3-dist">--</b>m</p><p class="turn__txt">도서관 앞 횡단보도까지 직진</p></div></div>
+          <div class="navfoot navfoot--tall">
+            <div>
+              <p class="navfoot__eta"><b data-t="39">--:--</b> 도착 예정 <span class="pm">±2분</span></p>
+              <p class="conf"><span class="bars"><i></i><i></i><i class="off"></i></span>예측 신뢰도 보통</p>
+              <p class="navfoot__sub">400번 버스 위치가 2분 전 정보라 오차가 있을 수 있어요.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 도착 -->
+        <div class="ps" data-ps="arrived">
+          <div class="sheet">
+            <p class="arr__ok"><span><svg><use href="#ic-check"/></svg></span>도착했어요</p>
+            <p class="arr__big"><span data-t="39">--:--</span> 도착 · 총 35분</p>
+            <ul class="arr__list">
+              <li>천천히 걷기<b>반영됨</b></li>
+              <li>계단 제외<b>계단 0곳</b></li>
+              <li>환승 1회 이하<b>1회</b></li>
+            </ul>
+            <span class="pbtn pbtn--ghost">이 조건을 자주 쓰는 조건으로 저장</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main id="main" class="story">
+    <section class="ch ch--intro" id="s-intro" data-a="0" data-b="0.08" aria-labelledby="t-intro">
+      <p class="eyebrow">맞춤형 AI 안내앱 · DUX</p>
+      <h1 id="t-intro" class="title"><span>오늘의 나에게</span><span>맞는 길.</span></h1>
+      <p class="lead">오늘 어떻게 가고 싶은지 말만 하면, 그 조건에 맞는 길을 찾아 줘요.<br />가는 도중에 상황이 바뀌어도 같은 조건으로 다시 안내해요.</p>
+      <p class="cue"><i></i>스크롤하거나 스페이스바를 눌러 한 단계씩 따라가 보세요</p>
+    </section>
+
+    <section class="ch ch--speak" id="s-speak" data-a="0.08" data-b="0.22" aria-labelledby="t-speak">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 1</span>말로 조건 설정</p>
+        <h2 id="t-speak" class="h2">원하는 이동 방식을<br />말로 설정해요.</h2>
+        <p class="body">“오늘은 천천히 걸을래”, “계단은 피하고 싶어”처럼 평소 말투로 말하면 돼요. DUX가 걷는 속도, 계단 여부, 환승 횟수 같은 길찾기 조건으로 바꿔서 기억해요.</p>
+      </div>
+    </section>
+
+    <section class="ch ch--match" id="s-match" data-a="0.22" data-b="0.33" aria-labelledby="t-match">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 2</span>조건 맞춤 경로 탐색</p>
+        <h2 id="t-match" class="h2">내 조건에 맞는<br />길만 골라 드려요.</h2>
+        <p class="body">걷는 속도에 맞춰 시간을 다시 계산하고, 계단이 있는 환승 경로는 처음부터 빼요. 그래서 27분짜리 최단 경로 대신 계단 없는 31분 경로를 추천하고, 왜 이 길인지도 함께 알려 드려요.</p>
+      </div>
+    </section>
+
+    <section class="ch ch--ride" id="s-ride" data-a="0.33" data-b="0.5" aria-labelledby="t-ride">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 3</span>도보·버스·지하철 통합 안내</p>
+        <h2 id="t-ride" class="h2">걷는 동안에는<br />다음에 할 일을 알려 드려요.</h2>
+        <p class="body">어디서 꺾을지, 어느 횡단보도를 건널지, 정류장까지 몇 m 남았는지 걸음에 맞춰 보여 줘요. 가는 길에 계단이 없는지도 계속 확인해요.</p>
+        <ol class="legs" aria-label="추천 경로 구간">
+          <li style="--k:0"><span>도보</span>4분</li>
+          <li style="--k:1"><span>402번 버스</span>14분</li>
+          <li style="--k:2"><span>2호선</span>9분</li>
+          <li style="--k:3"><span>도보</span>4분</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="ch ch--delay" id="s-delay" data-a="0.5" data-b="0.6" aria-labelledby="t-delay">
+      <div class="slash">
+        <p class="kick"><span class="n">기능 4</span>실시간 지연 감지</p>
+        <h2 id="t-delay" class="h2">타려던 버스나 지하철이 늦어지면<br />먼저 알려 드려요.</h2>
+        <p class="body">이동하는 동안 내 경로에 있는 버스·지하철 도착 정보를 계속 확인해요. 지금처럼 402번 버스가 9분 늦어져 환승이 어려워지면, 바로 알림을 보내고 다른 길을 찾기 시작해요.</p>
+      </div>
+    </section>
+
+    <section class="ch ch--reroute" id="s-reroute" data-a="0.6" data-b="0.735" aria-labelledby="t-reroute">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 5</span>조건 유지 재탐색</p>
+        <h2 id="t-reroute" class="h2">길이 바뀌어도<br />처음 말한 조건은 그대로예요.</h2>
+        <p class="body">다시 찾은 길도 ‘천천히 걷기 · 계단 제외 · 환승 1회 이하’를 그대로 따라요. 더 빨라도 계단이 있는 길은 추천하지 않고, 왜 길이 바뀌었는지 한 줄로 설명해요.</p>
+        <dl class="vs">
+          <div class="vs__row vs__row--no"><dt>가장 빠른 대안</dt><dd>32분 · 계단 2곳</dd></div>
+          <div class="vs__row vs__row--yes"><dt>DUX 추천 대안</dt><dd>35분 · 계단 0곳</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="ch ch--trust" id="s-trust" data-a="0.775" data-b="0.87" aria-labelledby="t-trust">
+      <div class="copy">
+        <p class="kick"><span class="n">기능 6</span>예측 신뢰도 표시</p>
+        <h2 id="t-trust" class="h2">확실하지 않을 때는<br />그렇다고 함께 보여 드려요.</h2>
+        <p class="body">도착 시간은 AI가 짐작하지 않고 지도·교통 데이터로 계산해요. 버스 위치 정보가 늦게 들어오거나 부족하면 ‘예측 신뢰도 보통’처럼 화면에 같이 표시해요.</p>
+      </div>
+    </section>
+
+    <section class="ch ch--arrive" id="s-arrive" data-a="0.87" data-b="0.935" aria-labelledby="t-arrive">
+      <div class="copy">
+        <h2 id="t-arrive" class="title title--sm"><span data-t="39">--:--</span>, 도착.</h2>
+        <p class="lead">처음 말한 조건 세 가지를 끝까지 지켰어요. 계단 0곳, 환승 1회.</p>
+      </div>
+    </section>
+
+    <section class="ch ch--download" id="s-download" data-a="0.935" data-b="1.01" aria-labelledby="t-download">
+      <div class="dl">
+        <div class="dl__copy">
+          <p class="kick kick--light"><img class="dl__icon" src="assets/dux-icon-64.png" width="36" height="36" alt="" />DUX · Android 앱</p>
+          <h2 id="t-download" class="h2">나에게 맞는 길,<br />지금 탐색해 보세요.</h2>
+          <p class="body">휴대폰 카메라로 QR을 찍거나, 휴대폰에서 아래 버튼을 눌러 DUX 앱을 설치하세요.</p>
+          <!-- 교체 지점: 실제 APK 파일 경로 -->
+          <a class="dl__btn" id="apk-link" href="downloads/dux.apk" download>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/></svg>
+            앱 받기
+          </a>
+          <p class="dl__note" id="apk-note" role="status" aria-live="polite">Android 전용 설치 파일(APK)입니다. 설치할 때 ‘알 수 없는 앱 설치’를 허용해 주세요.</p>
+        </div>
+        <figure class="dl__qr">
+          <!-- 교체 지점: 실제 다운로드 QR 이미지 -->
+          <img src="assets/qr-placeholder.svg" width="220" height="220" alt="DUX 앱 다운로드 QR 코드" />
+          <figcaption>카메라로 스캔</figcaption>
+        </figure>
+      </div>
+      <p class="fine">© 2026 Innovation<span class="osm-credit"> · 지도 데이터 © OpenStreetMap 기여자</span></p>
+    </section>
+  </main>
+
+  <div class="track" aria-hidden="true">
+    <span class="anchor" id="c-intro" style="--p:0"></span>
+    <span class="anchor" id="c-speak" style="--p:0.16"></span>
+    <span class="anchor" id="c-match" style="--p:0.3"></span>
+    <span class="anchor" id="c-ride" style="--p:0.44"></span>
+    <span class="anchor" id="c-delay" style="--p:0.56"></span>
+    <span class="anchor" id="c-reroute" style="--p:0.68"></span>
+    <span class="anchor" id="c-trust" style="--p:0.83"></span>
+    <span class="anchor" id="c-download" style="--p:1"></span>
+  </div>
+
+  <script type="module" src="v4.js?v=20261024c"></script>
+</body>
+</html>
