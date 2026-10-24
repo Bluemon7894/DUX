@@ -414,7 +414,7 @@ DUX는 교통수단과 지역에 따라 서로 다른 데이터 제공처를 사
 
 | 구성 | 상태 | 내용 |
 |---|---|---|
-| **Android 앱** | 개발 중 | 사용자가 이동 조건을 말하고 경로 안내를 받는 앱입니다. 스토어 출시 전이며 **APK 파일로 배포할 예정**입니다. |
+| **Android 앱** | MVP 공개 | 사용자가 이동 조건을 말하고 경로 안내를 받는 앱입니다. 스토어 출시 전이며 APK 파일로 배포합니다: [최신 APK 내려받기](https://github.com/Bluemon7894/DUX/releases/latest/download/DUX.apk) |
 | **백엔드** | 개발 중 | 자연어를 경로 조건으로 바꾸는 처리, 경로 탐색과 재탐색, 교통 데이터 연동을 맡습니다. |
 | **홍보 사이트** | 공개 | [dux-ai-map.vercel.app](https://dux-ai-map.vercel.app) · 한 사람의 이동을 1인칭으로 따라가며 기능을 소개하고, QR이나 버튼으로 앱(APK)을 내려받을 수 있게 합니다. |
 
@@ -424,7 +424,7 @@ DUX는 교통수단과 지역에 따라 서로 다른 데이터 제공처를 사
 
 - `index.html`, `css/`, `js/` (Three.js로 그린 3D 거리 장면과 휴대폰 화면), `assets/` (아이콘, 미리보기 이미지, 배경음악)
 - 로컬에서 보기: 저장소 폴더에서 `python tools/serve.py` 실행 후 `http://localhost:5173` 접속
-- APK 파일은 `downloads/dux.apk`, 다운로드 QR 이미지는 `assets/images/qr-placeholder.svg` 자리에 넣으면 사이트의 "앱 받기" 버튼과 QR에 연결됩니다.
+- 사이트의 "앱 받기" 버튼과 QR(`assets/images/qr-placeholder.svg`)은 GitHub 릴리스의 최신 APK(`https://github.com/Bluemon7894/DUX/releases/latest/download/DUX.apk`)로 연결됩니다. 새 버전을 릴리스에 `DUX.apk` 이름으로 올리면 링크와 QR은 그대로 둬도 됩니다.
 
 ### 아직 정하지 않은 것
 
