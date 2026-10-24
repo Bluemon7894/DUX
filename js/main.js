@@ -346,7 +346,7 @@ function setupNav() {
   navInfo = { cum, total: cum[cum.length - 1], steps: citySource === "procedural" ? NAV_STEPS : null };
 }
 
-function setupPhoneMap() {
+function setupPhoneMap(icon) {
   const R = world.city.route;
   const w2 = toPts(R.w2), w3 = toPts(R.w3);
   mapData = {
@@ -355,7 +355,7 @@ function setupPhoneMap() {
     sub: R.subAlt ? toPts(R.subAlt) : [w2[w2.length - 1], w3[0]],
     bus2: R.busAlt ? toPts(R.busAlt) : null
   };
-  phoneMap = createPhoneMap($("#phone-map"), world.city);
+  phoneMap = createPhoneMap($("#phone-map"), world.city, { marker: icon }); // 내 위치는 마스코트 푸들로
 }
 
 function phoneView(s) {
@@ -709,7 +709,7 @@ async function init() {
   setupAlight(w3Start);
   setupLabels();
   setupNav();
-  setupPhoneMap();
+  setupPhoneMap(icon);
   if (citySource === "osm") root.classList.add("src-osm");
   root.classList.add("is-ready");
   const qp = DEV_P;

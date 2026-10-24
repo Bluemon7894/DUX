@@ -17,7 +17,9 @@ const STYLE = {
   off: "#77736a"
 };
 
-export function createPhoneMap(canvas, city) {
+// opts.marker: 내 위치 표시에 쓸 마스코트(푸들) 이미지. 없으면 화살표
+export function createPhoneMap(canvas, city, opts = {}) {
+  const marker = opts.marker || null;
   const ctx = canvas.getContext("2d");
   const roads = city.roads.map((r) => ({ k: r.k, w: r.w, pts: toPts(r.pts) }));
   const blds = city.buildings.map((b) => {
@@ -127,18 +129,39 @@ export function createPhoneMap(canvas, city) {
       ctx.fillStyle = "#16150f"; ctx.strokeStyle = STYLE.walk; ctx.lineWidth = 3 * dpr;
       ctx.beginPath(); ctx.arc(x, y, 6 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
-    // 내 위치 (진행 방향 화살표)
+    // 내 위치: 진행 방향으로 퍼지는 빛 + 뾰족한 머리, 가운데에 마스코트 푸들 얼굴
     if (view.user) {
       const [x, y] = T(view.user.x, view.user.z);
       const a = view.mode === "follow" ? -Math.PI / 2 : view.user.yaw;
       ctx.fillStyle = "rgba(230,181,74,0.18)";
-      ctx.beginPath(); ctx.arc(x, y, 22 * dpr, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 24 * dpr, 0, Math.PI * 2); ctx.fill();
       ctx.save();
       ctx.translate(x, y); ctx.rotate(a + Math.PI / 2);
-      ctx.fillStyle = "#e6b54a"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5 * dpr;
-      ctx.beginPath(); ctx.moveTo(0, -12 * dpr); ctx.lineTo(9 * dpr, 9 * dpr); ctx.lineTo(0, 4 * dpr); ctx.lineTo(-9 * dpr, 9 * dpr); ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      ctx.restore();
+      if (marker) {
+        const cone = ctx.createRadialGradient(0, 0, 10 * dpr, 0, 0, 40 * dpr);
+        cone.addColorStop(0, "rgba(230,181,74,0.5)"); cone.addColorStop(1, "rgba(230,181,74,0)");
+        ctx.fillStyle = cone;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 40 * dpr, -Math.PI / 2 - 0.55, -Math.PI / 2 + 0.55); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#e6b54a"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2 * dpr;
+        ctx.beginPath(); ctx.moveTo(0, -25 * dpr); ctx.lineTo(7 * dpr, -14 * dpr); ctx.lineTo(-7 * dpr, -14 * dpr); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+        const r = 15 * dpr;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.closePath();
+        ctx.fillStyle = "#e6b54a"; ctx.fill(); ctx.clip();
+        // 아이콘에서 얼굴 부분만 (256px 원본 기준 가운데 위쪽)
+        const s = marker.width / 256;
+        ctx.drawImage(marker, 26 * s, 8 * s, 204 * s, 204 * s, x - r, y - r, r * 2, r * 2);
+        ctx.restore();
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5 * dpr;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        ctx.fillStyle = "#e6b54a"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5 * dpr;
+        ctx.beginPath(); ctx.moveTo(0, -12 * dpr); ctx.lineTo(9 * dpr, 9 * dpr); ctx.lineTo(0, 4 * dpr); ctx.lineTo(-9 * dpr, 9 * dpr); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
     }
   }
 
